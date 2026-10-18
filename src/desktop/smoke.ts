@@ -31,15 +31,22 @@ export async function runDesktopSmoke({ win, session, shotsDir }: { win: Browser
     js(`(() => { const p = document.getElementById("prompt"); p.value = ${JSON.stringify(text)}; document.getElementById("send").click(); })()`);
 
   let oracleShot = false;
+  let prompts = 0;
   const runTurn = async (text: string) => {
     await send(text);
     await sleep(300);
     for (let i = 0; i < 600 && (session.busy || (await js<boolean>(`!document.getElementById("oracle").hidden`))); i++) {
       if (await js<boolean>(`!document.getElementById("oracle").hidden`)) {
+        prompts++;
         if (!oracleShot) {
           oracleShot = true;
           await sleep(300);
           await shot("2-oracle");
+        } else if (prompts === 2) {
+          // The monster is up by now; show the arena without the dialog over it.
+          await js(`document.getElementById("oracle").hidden = true`);
+          await shot("2b-fight");
+          await js(`document.getElementById("oracle").hidden = false`);
         }
         await js(`document.getElementById("oracle-yes").click()`);
       }
@@ -58,7 +65,9 @@ export async function runDesktopSmoke({ win, session, shotsDir }: { win: Browser
   await runTurn("/roast");
   await shot("4-roast");
 
-  const text = await js<string>("document.body.innerText");
+  const text = await js<string>("document.getElementById('transcript').innerText");
+  const labours = await js<string>("[...document.querySelectorAll('.labour-line')].map((e) => e.innerText).join(' | ')");
+  const ring = await js<string>("document.getElementById('foe-name').textContent");
   // Transcript order: the boss must appear before it is slain, and the final reply after both.
   const order = (needle: string) => text.indexOf(needle);
   const checks: Array<[string, boolean]> = [
@@ -66,11 +75,12 @@ export async function runDesktopSmoke({ win, session, shotsDir }: { win: Browser
     ["oracle shown", oracleShot],
     ["monster appeared", /A (Harpy|Minotaur|Chimera|Hydra) appears/.test(text)],
     ["monster slain", text.includes("is slain")],
-    ["First Blood in transcript", text.includes("Labour complete: First Blood")],
-    ["Golden Fleece earned", text.includes("Labour complete: Golden Fleece")],
+    ["arena back to all clear", ring === "All clear" || ring.endsWith("slain")],
+    ["First Blood in transcript", labours.includes("First Blood")],
+    ["Golden Fleece earned", labours.includes("Golden Fleece")],
     ["Hephaestus replied", text.includes("Good metal now")],
-    ["Hermes narrated", text.includes("Hermes:")],
-    ["transcript in order", order("appears!") < order("is slain") && order("is slain") < order("Good metal now")],
+    ["Hermes narrated", (await js<number>("document.querySelectorAll('.hermes').length")) > 0],
+    ["transcript in order", order("appears") < order("is slain") && order("is slain") < order("Good metal now")],
     ["rank shown as Hero", (await js<string>(`document.getElementById("rank-name").textContent`)) === "Hero"],
     ["no renderer errors", errors.length === 0],
   ];

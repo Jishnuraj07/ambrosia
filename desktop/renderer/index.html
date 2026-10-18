@@ -5,124 +5,121 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Ambrosia</title>
+    <link rel="icon" href="../icon.svg" />
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <header class="topbar">
-      <div class="brand">
-        <span class="brand-mark">⚱</span>
-        <span class="brand-name">AMBROSIA</span>
-        <span id="demo-badge" class="badge" hidden>demo</span>
-      </div>
-      <button id="project" class="project" title="Choose the project folder">
-        <span class="project-icon">📁</span><span id="project-path">…</span>
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <defs>
+        <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3.5 7.5a2 2 0 0 1 2-2h3.6l2 2h7.4a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z" /></symbol>
+        <symbol id="i-sound" viewBox="0 0 24 24"><path d="M4 9.5h3l4.5-4v13L7 14.5H4z" /><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11" /></symbol>
+        <symbol id="i-sound-off" viewBox="0 0 24 24"><path d="M4 9.5h3l4.5-4v13L7 14.5H4z" /><path d="M16 9.5l5 5M21 9.5l-5 5" /></symbol>
+        <symbol id="i-voice" viewBox="0 0 24 24"><path d="M12 3.5a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0v-5a3 3 0 0 1 3-3z" /><path d="M6 11.5a6 6 0 0 0 12 0M12 17.5v3" /></symbol>
+        <symbol id="i-focus" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.5" /><circle cx="12" cy="12" r="2.5" /></symbol>
+        <symbol id="i-send" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6" /></symbol>
+        <symbol id="i-stop" viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="2" /></symbol>
+        <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" /></symbol>
+        <symbol id="i-cross" viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17" /></symbol>
+        <symbol id="i-drop" viewBox="0 0 24 24"><path d="M12 3.5s-5.5 6.6-5.5 10.2a5.5 5.5 0 0 0 11 0C17.5 10.1 12 3.5 12 3.5z" /></symbol>
+      </defs>
+    </svg>
+
+    <header class="bar">
+      <img class="mark" src="../icon.svg" alt="" />
+      <span class="wordmark">Ambrosia</span>
+      <span id="demo-badge" class="demo" hidden>Demo</span>
+      <button id="project" class="project" title="Choose another project folder">
+        <svg class="ic"><use href="#i-folder" /></svg><span id="project-path">…</span>
       </button>
-      <div class="rank" id="rank">
-        <span class="rank-glyph" id="rank-glyph">🏺</span>
-        <div class="rank-text">
-          <div class="rank-name" id="rank-name">Mortal</div>
-          <div class="xpbar"><div class="xpfill" id="xp-fill"></div></div>
-          <div class="xp-label" id="xp-label">0 ambrosia</div>
-        </div>
-        <div id="xp-toasts" class="xp-toasts"></div>
+
+      <div id="rank" class="rank">
+        <span id="rank-name" class="rank-name">Mortal</span>
+        <div class="xp" aria-hidden="true"><div id="xp-fill" class="xp-fill"></div></div>
+        <span id="xp-label" class="xp-label">0</span>
+        <span id="xp-float" class="xp-float" aria-live="polite"></span>
       </div>
-      <div class="toggles">
-        <button id="toggle-sound" class="icon-btn" title="Sound (/mute)">🔉</button>
-        <button id="toggle-tts" class="icon-btn" title="Hermes speaks aloud (/tts)">🗣</button>
-        <button id="toggle-serious" class="icon-btn" title="Serious mode (/serious)">🎭</button>
+      <div class="tools">
+        <button id="toggle-sound" class="tool-btn" title="Sound"><svg class="ic"><use href="#i-sound" /></svg></button>
+        <button id="toggle-tts" class="tool-btn" title="Hermes reads his lines aloud"><svg class="ic"><use href="#i-voice" /></svg></button>
+        <button id="toggle-serious" class="tool-btn" title="Serious mode: no game, no narration"><svg class="ic"><use href="#i-focus" /></svg></button>
       </div>
     </header>
 
-    <main class="layout">
-      <section class="chat">
+    <main class="frame">
+      <section class="talk">
         <div id="transcript" class="transcript" aria-live="polite">
-          <div class="welcome">
-            <div class="welcome-title">The forge is lit.</div>
-            <div class="welcome-sub">
-              Give Hephaestus a task, or call the council. Failing tests summon monsters, and every fix earns ambrosia.
+          <div class="empty">
+            <img class="empty-mark" src="../icon.svg" alt="" />
+            <p class="empty-title">What shall we forge?</p>
+            <p class="empty-sub">Hephaestus takes the task. Failing tests summon a monster; each fix wounds it.</p>
+          </div>
+        </div>
+
+        <div class="composer">
+          <div id="working" class="working" hidden>
+            <div class="working-track"><div id="working-bar" class="working-bar"></div></div>
+            <div class="working-row">
+              <span id="working-text" class="working-text"></span>
+              <span id="working-thought" class="working-thought"></span>
+              <button id="stop" class="stop" title="Stop (Esc)"><svg class="ic"><use href="#i-stop" /></svg>Stop</button>
             </div>
           </div>
-        </div>
-
-        <div id="working" class="working" hidden>
-          <span class="spinner"></span>
-          <span id="working-text" class="working-text"></span>
-          <span id="working-thought" class="working-thought"></span>
-          <button id="stop" class="stop">Stop <kbd>Esc</kbd></button>
-        </div>
-
-        <form id="composer" class="composer">
-          <div class="chips">
-            <button type="button" class="chip" data-insert="/council ">🦉 Council</button>
-            <button type="button" class="chip" data-run="/roast">🎭 Roast my diff</button>
-            <button type="button" class="chip" data-run="/stats">📜 Stats</button>
-            <button type="button" class="chip" data-run="/clear">🧹 Clear memory</button>
-            <button type="button" class="chip" data-run="/help">❔ Help</button>
+          <form id="form" class="field">
+            <textarea id="prompt" rows="1" placeholder="Describe a task, or type / for commands"></textarea>
+            <button id="send" type="submit" class="send" title="Send (Enter)"><svg class="ic"><use href="#i-send" /></svg></button>
+          </form>
+          <div class="shortcuts">
+            <button type="button" class="shortcut" data-insert="/council ">Council</button>
+            <button type="button" class="shortcut" data-run="/roast">Roast my diff</button>
+            <button type="button" class="shortcut" data-run="/stats">Stats</button>
+            <button type="button" class="shortcut" data-run="/clear">Clear memory</button>
+            <button type="button" class="shortcut" data-run="/help">Help</button>
           </div>
-          <div class="input-row">
-            <textarea id="prompt" rows="1" placeholder="What shall we forge?  (Enter to send, Shift+Enter for a new line)"></textarea>
-            <button id="send" type="submit" class="send">Send</button>
-          </div>
-        </form>
+        </div>
       </section>
 
-      <aside class="sidebar">
-        <section class="card arena" id="arena">
-          <h2>The Arena</h2>
-          <div id="arena-idle" class="arena-idle">
-            <div class="arena-temple">🏛</div>
-            <div>The arena is quiet.</div>
-            <div class="muted">Run the tests to summon a foe.</div>
+      <aside class="rail">
+        <section class="arena" id="arena" aria-label="Arena">
+          <svg class="ring" viewBox="0 0 200 200" aria-hidden="true">
+            <circle class="ring-track" cx="100" cy="100" r="84" />
+            <circle id="ring-hp" class="ring-hp" cx="100" cy="100" r="84" />
+          </svg>
+          <div class="arena-center">
+            <div id="foe-name" class="foe-name">All clear</div>
+            <div id="foe-hp" class="foe-hp">No failing tests</div>
           </div>
-          <div id="arena-boss" class="arena-boss" hidden>
-            <div id="boss-sprite" class="boss-sprite">🐉</div>
-            <div id="boss-name" class="boss-name">Hydra</div>
-            <div class="hpbar"><div id="hp-fill" class="hpfill"></div></div>
-            <div id="boss-hp" class="boss-hp">3 / 3 failing tests</div>
-          </div>
-          <div id="arena-banner" class="arena-banner" hidden></div>
         </section>
 
-        <section class="card">
-          <h2>The Pantheon</h2>
-          <ul id="pantheon" class="pantheon"></ul>
+        <section class="rail-section">
+          <h2>Labours <span id="labour-count" class="count"></span></h2>
+          <ul id="labours" class="labours"></ul>
         </section>
 
-        <section class="card">
-          <h2>Labours <span id="labour-count" class="muted"></span></h2>
-          <div id="labours" class="labours"></div>
-        </section>
-
-        <section class="card">
+        <section class="rail-section">
           <h2>Record</h2>
           <dl id="stats" class="stats"></dl>
         </section>
       </aside>
     </main>
 
-    <div id="oracle" class="modal" hidden>
-      <div class="oracle-card" role="dialog" aria-modal="true" aria-labelledby="oracle-title">
-        <div class="oracle-orb">🔮</div>
-        <h3 id="oracle-title">The Oracle asks…</h3>
-        <div id="oracle-risk" class="oracle-risk" hidden>⚠ The smoke darkens. This one looks dangerous.</div>
+    <div id="oracle" class="veil" hidden>
+      <div class="oracle" role="dialog" aria-modal="true" aria-labelledby="oracle-title">
+        <p id="oracle-title" class="oracle-title"></p>
+        <p id="oracle-risk" class="oracle-risk" hidden>This command can delete or overwrite things. Check it carefully.</p>
         <pre id="oracle-detail" class="oracle-detail"></pre>
         <div class="oracle-actions">
-          <button id="oracle-yes" class="btn primary">Allow <kbd>Y</kbd></button>
+          <button id="oracle-no" class="btn">Deny <kbd>N</kbd></button>
           <button id="oracle-always" class="btn">Always allow <span id="oracle-tool"></span> <kbd>A</kbd></button>
-          <button id="oracle-no" class="btn danger">Deny <kbd>N</kbd></button>
+          <button id="oracle-yes" class="btn primary">Allow <kbd>Y</kbd></button>
         </div>
       </div>
     </div>
 
     <div id="ascension" class="ascension" hidden>
-      <div class="ascension-inner">
-        <div class="ascension-bolt">⚡</div>
-        <div class="ascension-title">ASCENSION</div>
-        <div id="ascension-rank" class="ascension-rank">You are now a Hero</div>
-      </div>
+      <img class="ascension-mark" src="../icon.svg" alt="" />
+      <p id="ascension-rank" class="ascension-rank"></p>
+      <p class="ascension-sub">New rank</p>
     </div>
-
-    <div id="toasts" class="toasts"></div>
 
     <script type="module" src="app.js"></script>
   </body>

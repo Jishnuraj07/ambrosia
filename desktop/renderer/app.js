@@ -3,21 +3,25 @@
 
 const api = window.ambrosia;
 const $ = (id) => document.getElementById(id);
+const RING = 2 * Math.PI * 84; // circumference of the arena ring
 
-const MONSTERS = { Harpy: "🦅", Minotaur: "🐂", Chimera: "🦁", Hydra: "🐉" };
-const TOOL_ICONS = { read_file: "📜", write_file: "🔨", edit_file: "🔧", glob: "🧭", grep: "🔍", shell: "🔥", run_tests: "⚔" };
-const ROLES = {
-  hephaestus: "Smith · does the work",
-  athena: "Strategist · plans the council",
-  momus: "Critic · reviews and roasts",
-  hermes: "Messenger · narrates",
+// [while running, when done]
+const TOOL_LABELS = {
+  read_file: ["Reading", "Read"],
+  write_file: ["Writing", "Wrote"],
+  edit_file: ["Editing", "Edited"],
+  glob: ["Finding files", "Found files"],
+  grep: ["Searching code", "Searched code"],
+  shell: ["Running", "Ran"],
+  run_tests: ["Running tests", "Ran tests"],
 };
+const TOOL_NAMES = { read_file: "reading", write_file: "writing files", edit_file: "editing", glob: "finding files", grep: "searching", shell: "commands", run_tests: "running tests" };
 const VERBS = { shell: "run a command", run_tests: "run the tests", write_file: "write a file", edit_file: "edit a file" };
 
 let state = null; // snapshot from the main process
 let busy = false;
-let live = null; // { god, el, body, text, thinking }
-const tools = new Map(); // tool_use id -> row element
+let live = null; // the god currently speaking: { god, md, text, thinking }
+const steps = new Map(); // tool_use id -> row
 let tick = 0;
 
 // ---------- helpers ----------
@@ -29,6 +33,15 @@ function el(tag, cls, text) {
   return e;
 }
 
+function icon(name) {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("class", "ic");
+  const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+  use.setAttribute("href", `#i-${name}`);
+  svg.appendChild(use);
+  return svg;
+}
+
 function escapeHtml(s) {
   return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 }
@@ -36,7 +49,7 @@ function escapeHtml(s) {
 /** A small, safe Markdown subset: code blocks, inline code, bold, italics, headings, lists. */
 function markdown(src) {
   const blocks = [];
-  let text = escapeHtml(src.trim()).replace(/```[\w-]*\n?([\s\S]*?)```/g, (_, code) => {
+  const text = escapeHtml(src.trim()).replace(/```[\w-]*\n?([\s\S]*?)```/g, (_, code) => {
     blocks.push(`<pre><code>${code.replace(/\n$/, "")}</code></pre>`);
     return `\u0000${blocks.length - 1}\u0000`;
   });
@@ -48,71 +61,44 @@ function markdown(src) {
   const out = [];
   for (const para of text.split(/\n{2,}/)) {
     const lines = para.split("\n");
-    if (/^\u0000\d+\u0000$/.test(para.trim())) {
-      out.push(para.trim());
-    } else if (lines.every((l) => /^\s*[-*] /.test(l))) {
-      out.push(`<ul>${lines.map((l) => `<li>${inline(l.replace(/^\s*[-*] /, ""))}</li>`).join("")}</ul>`);
-    } else if (lines.every((l) => /^\s*\d+[.)] /.test(l))) {
-      out.push(`<ol>${lines.map((l) => `<li>${inline(l.replace(/^\s*\d+[.)] /, ""))}</li>`).join("")}</ol>`);
-    } else if (/^#{1,3} /.test(para)) {
-      out.push(`<h3>${inline(para.replace(/^#{1,3} /, ""))}</h3>`);
-    } else {
-      out.push(`<p>${inline(para).replace(/\n/g, "<br>")}</p>`);
-    }
+    if (/^\u0000\d+\u0000$/.test(para.trim())) out.push(para.trim());
+    else if (lines.every((l) => /^\s*[-*] /.test(l))) out.push(`<ul>${lines.map((l) => `<li>${inline(l.replace(/^\s*[-*] /, ""))}</li>`).join("")}</ul>`);
+    else if (lines.every((l) => /^\s*\d+[.)] /.test(l))) out.push(`<ol>${lines.map((l) => `<li>${inline(l.replace(/^\s*\d+[.)] /, ""))}</li>`).join("")}</ol>`);
+    else if (/^#{1,3} /.test(para)) out.push(`<h3>${inline(para.replace(/^#{1,3} /, ""))}</h3>`);
+    else out.push(`<p>${inline(para).replace(/\n/g, "<br>")}</p>`);
   }
   return out.join("").replace(/\u0000(\d+)\u0000/g, (_, i) => blocks[Number(i)]);
 }
 
-function persona(god) {
-  return state.personas[god];
-}
+const persona = (god) => state.personas[god];
 
-function scrollDown() {
+function scrollDown(force = false) {
   const t = $("transcript");
-  const nearBottom = t.scrollHeight - t.scrollTop - t.clientHeight < 200;
-  if (nearBottom) requestAnimationFrame(() => (t.scrollTop = t.scrollHeight));
+  if (force || t.scrollHeight - t.scrollTop - t.clientHeight < 240) {
+    requestAnimationFrame(() => (t.scrollTop = t.scrollHeight));
+  }
 }
 
 function append(node) {
+  document.querySelector(".empty")?.remove();
   $("transcript").appendChild(node);
   scrollDown();
   return node;
 }
 
-function entry(cls, text) {
-  return append(el("div", `entry ${cls}`, text));
+function line(cls, text) {
+  return append(el("div", cls, text));
 }
 
-function toast(html) {
-  const t = el("div", "toast");
-  t.innerHTML = html;
-  $("toasts").appendChild(t);
-  setTimeout(() => t.remove(), 4600);
-}
-
-// ---------- god messages ----------
-
-function godCard(god) {
-  const p = persona(god);
-  const card = el("div", "entry god");
-  card.style.setProperty("--god-color", p.color);
-  card.appendChild(el("div", "avatar", p.glyph));
-  const body = el("div", "god-body");
-  body.appendChild(el("div", "god-name", p.title));
-  const md = el("div", "md");
-  body.appendChild(md);
-  card.appendChild(body);
-  return { card, md };
-}
+// ---------- the gods speaking ----------
 
 function startLive(god) {
-  live = { god, card: null, md: null, text: "", thinking: "" };
+  live = { god, md: null, text: "", thinking: "" };
 }
 
-/** Freeze the streamed text into a permanent card (before tools, prompts, or the turn's end). */
+/** Freeze what was streamed so far; the next words start a new message. */
 function flushLive() {
   if (live) {
-    live.card = null;
     live.md = null;
     live.text = "";
   }
@@ -120,57 +106,75 @@ function flushLive() {
 
 function renderLive() {
   if (!live || !live.text.trim()) return;
-  if (!live.card) {
-    const { card, md } = godCard(live.god);
-    live.card = card;
-    live.md = md;
-    append(card);
+  if (!live.md) {
+    const p = persona(live.god);
+    const msg = el("div", "msg");
+    msg.style.setProperty("--god", p.color);
+    const who = el("div", "who");
+    who.appendChild(el("span", "dot"));
+    who.appendChild(el("span", "", p.title));
+    msg.appendChild(who);
+    live.md = el("div", "md");
+    msg.appendChild(live.md);
+    append(msg);
   }
-  live.md.innerHTML = markdown(live.text);
+  // Momus ends with a protocol line for the harness; show it as a tag instead.
+  const verdict = live.text.match(/VERDICT:\s*(APPROVED|REVISE)/i);
+  live.md.innerHTML = markdown(live.text.replace(/\n?\s*VERDICT:\s*(APPROVED|REVISE)\s*$/i, ""));
+  if (verdict) {
+    const approved = verdict[1].toUpperCase() === "APPROVED";
+    live.md.appendChild(el("span", `verdict ${approved ? "approved" : "revise"}`, approved ? "Approved" : "Wants changes"));
+  }
   scrollDown();
 }
-
-// ---------- working indicator ----------
 
 function setWorking(god) {
   const w = $("working");
   if (!god) {
     w.hidden = true;
-    document.querySelectorAll(".pantheon li").forEach((li) => li.classList.remove("active"));
     return;
   }
   const p = persona(god);
   w.hidden = false;
-  const line = p.workingLines[Math.floor(tick / 25) % p.workingLines.length];
-  $("working-text").textContent = `${p.glyph} ${p.title} is ${line}…`;
-  $("working-thought").textContent = live?.thinking ? `⌁ ${live.thinking.replace(/\s+/g, " ").trim().slice(-140)}` : "";
-  document.querySelectorAll(".pantheon li").forEach((li) => li.classList.toggle("active", li.dataset.god === god));
+  w.style.setProperty("--god", p.color);
+  const flavour = p.workingLines[Math.floor(tick / 30) % p.workingLines.length];
+  $("working-text").textContent = `${p.title} is ${flavour}`;
+  const thought = live?.thinking?.replace(/\s+/g, " ").trim();
+  $("working-thought").textContent = thought ? thought.slice(-140) : "";
 }
 
-// ---------- profile, arena, labours ----------
+// ---------- rank, arena, labours, record ----------
 
 function rankInfo(xp) {
   let rank = state.ranks[0];
   for (const r of state.ranks) if (xp >= r.min) rank = r;
   const next = state.ranks[state.ranks.indexOf(rank) + 1] ?? null;
-  const fraction = next ? (xp - rank.min) / (next.min - rank.min) : 1;
-  return { rank, next, fraction };
+  return { rank, next, fraction: next ? (xp - rank.min) / (next.min - rank.min) : 1 };
 }
 
-function renderProfile() {
+function renderRank() {
   const { rank, next, fraction } = rankInfo(state.xp);
-  $("rank-glyph").textContent = rank.glyph;
   $("rank-name").textContent = rank.name;
   $("xp-fill").style.width = `${Math.round(fraction * 100)}%`;
-  $("xp-label").textContent = next ? `${state.xp} / ${next.min} ambrosia to ${next.name}` : `${state.xp} ambrosia · the summit`;
-  $("rank").style.visibility = state.serious ? "hidden" : "visible";
+  $("xp-label").textContent = String(state.xp);
+  $("rank").title = next ? `${state.xp} ambrosia. ${next.min - state.xp} more to reach ${next.name}.` : `${state.xp} ambrosia. The highest rank.`;
+  $("rank").hidden = state.serious;
+}
 
+function floatXp(amount) {
+  const f = $("xp-float");
+  f.textContent = `${amount > 0 ? "+" : "−"}${Math.abs(amount)}`;
+  f.className = `xp-float${amount < 0 ? " loss" : ""}`;
+  void f.offsetWidth;
+  f.classList.add("show");
+}
+
+function renderStats() {
   const s = state.stats;
   const rows = [
-    ["Ambrosia", state.xp],
     ["Tests fixed", s.testsFixed],
     ["Monsters slain", s.bossesDefeated],
-    ["Tasks completed", s.tasks],
+    ["Tasks done", s.tasks],
     ["Momus approvals", s.reviewsPassed],
     ["Sessions", s.sessions],
   ];
@@ -183,85 +187,79 @@ function renderProfile() {
 }
 
 function renderLabours(freshId) {
-  const grid = $("labours");
-  grid.replaceChildren();
-  for (const l of state.labours) {
-    const tile = el("div", `labour${l.earned ? " earned" : ""}${l.id === freshId ? " fresh" : ""}`);
-    tile.title = `${l.description} (+${l.reward} ambrosia)`;
-    tile.appendChild(el("div", "name", `${l.earned ? "🏆" : "·"} ${l.title}`));
-    tile.appendChild(el("div", "", l.description));
-    grid.appendChild(tile);
-  }
-  $("labour-count").textContent = `${state.labours.filter((l) => l.earned).length}/${state.labours.length}`;
-}
-
-function renderPantheon() {
-  const ul = $("pantheon");
+  const ul = $("labours");
   ul.replaceChildren();
-  for (const god of ["hephaestus", "athena", "momus", "hermes"]) {
-    const p = persona(god);
-    const li = el("li");
-    li.dataset.god = god;
-    li.style.setProperty("--god-color", p.color);
-    li.appendChild(el("div", "avatar", p.glyph));
-    const text = el("div");
-    text.appendChild(el("div", "god-name", p.title));
-    text.appendChild(el("div", "role", ROLES[god]));
-    li.appendChild(text);
+  for (const l of state.labours) {
+    const li = el("li", `${l.earned ? "earned" : ""}${l.id === freshId ? " fresh" : ""}`);
+    li.title = `${l.description}. Worth ${l.reward} ambrosia.`;
+    li.appendChild(el("span", "pip"));
+    li.appendChild(el("span", "", l.title));
     ul.appendChild(li);
   }
+  $("labour-count").textContent = `${state.labours.filter((l) => l.earned).length} of ${state.labours.length}`;
 }
 
-function renderBoss(boss, change) {
-  const sprite = $("boss-sprite");
-  if (!boss || change === "defeated") {
-    if (change === "defeated" && !$("arena-boss").hidden) {
-      sprite.className = "boss-sprite dying";
-      const banner = $("arena-banner");
-      banner.textContent = `${boss?.name ?? "Monster"} slain!`;
-      banner.hidden = false;
-      setTimeout(() => {
-        banner.hidden = true;
-        $("arena-boss").hidden = true;
-        $("arena-idle").hidden = false;
-        sprite.className = "boss-sprite";
-      }, 2200);
-    } else {
-      $("arena-boss").hidden = true;
-      $("arena-idle").hidden = false;
-    }
+function setRing(fraction) {
+  $("ring-hp").style.strokeDashoffset = String(RING * (1 - Math.max(0, Math.min(1, fraction))));
+}
+
+function pulseArena(cls) {
+  const a = $("arena");
+  a.classList.remove("hit", "grow", "won");
+  void a.offsetWidth;
+  a.classList.add(cls);
+}
+
+function renderArena(boss, change) {
+  const a = $("arena");
+  if (change === "defeated") {
+    a.classList.remove("fighting");
+    setRing(1);
+    $("foe-name").textContent = `${boss?.name ?? "Monster"} slain`;
+    $("foe-hp").textContent = "All tests pass";
+    pulseArena("won");
+    setTimeout(() => {
+      if (state.boss) return; // a new fight began meanwhile
+      a.classList.remove("won");
+      $("foe-name").textContent = "All clear";
+      $("foe-hp").textContent = "No failing tests";
+    }, 3000);
     return;
   }
-  $("arena-idle").hidden = true;
-  $("arena-boss").hidden = false;
-  sprite.textContent = MONSTERS[boss.name] ?? "👹";
-  $("boss-name").textContent = boss.name;
-  $("hp-fill").style.width = `${Math.max(4, (boss.hp / boss.maxHp) * 100)}%`;
-  $("boss-hp").textContent = `${boss.hp} / ${boss.maxHp} failing test${boss.maxHp === 1 ? "" : "s"}`;
-  if (change === "hit" || change === "grow") {
-    sprite.className = "boss-sprite";
-    void sprite.offsetWidth; // restart the animation
-    sprite.className = `boss-sprite ${change}`;
+  if (!boss) {
+    a.classList.remove("fighting");
+    setRing(1);
+    $("foe-name").textContent = "All clear";
+    $("foe-hp").textContent = "No failing tests";
+    return;
   }
+  a.classList.add("fighting");
+  setRing(boss.hp / boss.maxHp);
+  $("foe-name").textContent = boss.name;
+  $("foe-hp").textContent = `${boss.hp} of ${boss.maxHp} test${boss.maxHp === 1 ? "" : "s"} failing`;
+  if (change === "hit" || change === "grow") pulseArena(change);
 }
 
-function renderToggles() {
-  $("toggle-sound").textContent = state.sound ? "🔉" : "🔇";
-  $("toggle-sound").classList.toggle("off", !state.sound);
-  $("toggle-tts").classList.toggle("off", !state.tts);
-  $("toggle-serious").classList.toggle("off", state.serious);
-  $("toggle-serious").title = state.serious ? "Serious mode is on: click to bring back the fun" : "Serious mode (/serious)";
+function renderTools() {
+  const sound = $("toggle-sound");
+  sound.querySelector("use").setAttribute("href", state.sound ? "#i-sound" : "#i-sound-off");
+  sound.title = state.sound ? "Sound on" : "Sound off";
+  $("toggle-tts").classList.toggle("on", state.tts);
+  $("toggle-tts").title = state.tts ? "Hermes reads his lines aloud (on)" : "Hermes reads his lines aloud (off)";
+  $("toggle-serious").classList.toggle("on", state.serious);
+  $("toggle-serious").title = state.serious ? "Serious mode is on" : "Serious mode: no game, no narration";
   $("project-path").textContent = state.root;
-  $("project").title = `${state.root}\nClick to choose another project`;
+  $("project").title = `${state.root}\nChoose another project folder`;
   $("demo-badge").hidden = !state.demo;
+  document.querySelector(".rail").hidden = state.serious;
 }
 
 function renderAll() {
-  renderProfile();
+  renderRank();
   renderLabours();
-  renderPantheon();
-  renderToggles();
-  renderBoss(state.boss, "none");
+  renderStats();
+  renderTools();
+  renderArena(state.boss, "none");
 }
 
 // ---------- events from the gods ----------
@@ -277,26 +275,25 @@ const handlers = {
     renderLive();
   },
   thinking({ delta }) {
-    if (!live) return;
-    live.thinking = (live.thinking + delta).slice(-400);
+    if (live) live.thinking = (live.thinking + delta).slice(-400);
   },
   tool_start({ id, name, summary }) {
     flushLive();
-    const row = el("div", "entry tool running");
-    row.appendChild(el("span", "status", "⋯"));
-    row.appendChild(el("span", "", TOOL_ICONS[name] ?? "•"));
-    row.appendChild(el("span", "tool-name", name));
-    row.appendChild(el("span", "tool-summary", summary));
-    tools.set(id, append(row));
+    const row = el("div", "step running");
+    row.appendChild(el("span", "state"));
+    row.dataset.tool = name;
+    row.appendChild(el("span", "step-name", TOOL_LABELS[name]?.[0] ?? name));
+    row.appendChild(el("span", "step-arg", summary));
+    steps.set(id, append(row));
   },
   tool_end({ id, ok, summary }) {
-    const row = tools.get(id);
-    tools.delete(id);
+    const row = steps.get(id);
+    steps.delete(id);
     if (!row) return;
-    row.classList.remove("running");
-    row.classList.add(ok ? "ok" : "failed");
-    row.querySelector(".status").textContent = ok ? "✓" : "✗";
-    if (!ok && summary) row.after(el("div", "tool-error", summary));
+    row.className = `step ${ok ? "ok" : "failed"}`;
+    row.querySelector(".step-name").textContent = TOOL_LABELS[row.dataset.tool]?.[1] ?? row.dataset.tool;
+    row.querySelector(".state").appendChild(icon(ok ? "check" : "cross"));
+    if (!ok && summary) row.after(el("div", "step-error", summary));
   },
   turn_end() {
     flushLive();
@@ -304,51 +301,53 @@ const handlers = {
     setWorking(null);
   },
   notice({ text }) {
-    entry(text.includes("\n") ? "notice block" : "notice", text);
+    line(text.includes("\n") ? "note block" : "note", text);
   },
   error({ message }) {
-    entry("error", `⚡ ${message}`);
+    line("fail", message);
   },
   narration({ text }) {
-    entry("narration", `🪽 Hermes: ${text}`);
+    const n = el("div", "hermes");
+    n.appendChild(el("b", "", "Hermes "));
+    n.appendChild(document.createTextNode(text));
+    append(n);
   },
   xp({ amount, reason, total }) {
     state.xp = total;
-    renderProfile();
-    const line = el("div", `entry xp-line${amount < 0 ? " negative" : ""}`, `⚱ ${amount > 0 ? "+" : ""}${amount} ambrosia `);
-    line.appendChild(el("span", "reason", `· ${reason}`));
-    append(line);
-    const t = el("div", `xp-toast${amount < 0 ? " negative" : ""}`, `${amount > 0 ? "+" : ""}${amount} ⚱`);
-    $("xp-toasts").appendChild(t);
-    setTimeout(() => t.remove(), 1900);
+    renderRank();
+    floatXp(amount);
+    if (amount < 0) line("event foe", `A test you fixed broke again. ${amount} ambrosia.`);
   },
   labour(labour) {
     const l = state.labours.find((x) => x.id === labour.id);
     if (l) l.earned = true;
     renderLabours(labour.id);
-    const card = el("div", "entry labour-card");
-    card.appendChild(el("div", "title", `🏆 Labour complete: ${labour.title}`));
-    card.appendChild(el("div", "", `${labour.description} · +${labour.reward} ambrosia`));
-    append(card);
-    toast(`🏆 <strong>${escapeHtml(labour.title)}</strong><br><span class="muted">${escapeHtml(labour.description)}</span>`);
+    const row = el("div", "labour-line");
+    row.appendChild(icon("drop"));
+    const text = el("div");
+    text.appendChild(el("strong", "", labour.title));
+    text.appendChild(el("span", "labour-desc", labour.description));
+    row.appendChild(text);
+    row.appendChild(el("span", "gain", `+${labour.reward}`));
+    append(row);
   },
   rank_up({ rank }) {
-    $("ascension-rank").textContent = `You are now a ${rank}`;
+    $("ascension-rank").textContent = rank;
     $("ascension").hidden = false;
     setTimeout(() => ($("ascension").hidden = true), 3200);
   },
   boss({ boss, change }) {
-    if (state.serious) return;
+    if (state.serious || !boss || change === "none") return;
     state.boss = change === "defeated" ? null : boss;
-    renderBoss(boss, change);
-    if (!boss || change === "none") return;
+    renderArena(boss, change);
+    const n = boss.hp;
     const text = {
-      spawn: `${MONSTERS[boss.name] ?? "👹"} A ${boss.name} appears! ${boss.hp} failing test${boss.hp > 1 ? "s" : ""}.`,
-      grow: `🐍 It grows new heads! The ${boss.name} now has ${boss.hp}.`,
-      hit: `⚔ Hit! The ${boss.name} is down to ${boss.hp}.`,
-      defeated: `🏛 The ${boss.name} is slain! All tests pass.`,
+      spawn: `A ${boss.name} appears with ${n} failing test${n === 1 ? "" : "s"}.`,
+      grow: `The ${boss.name} grows new heads. ${n} tests failing now.`,
+      hit: `The ${boss.name} takes a hit. ${n} left.`,
+      defeated: `The ${boss.name} is slain. All tests pass.`,
     }[change];
-    if (text) entry(`boss-line${change === "defeated" ? " win" : ""}`, text);
+    line(`event ${change === "defeated" ? "won" : "foe"}`, text);
   },
 };
 
@@ -360,15 +359,15 @@ function showOracle() {
   const next = oracleQueue[0];
   if (!next) {
     $("oracle").hidden = true;
+    $("prompt").focus();
     return;
   }
   const { req } = next;
-  const p = persona(req.god);
-  $("oracle-title").textContent = `The Oracle asks: may ${p.title} ${VERBS[req.tool] ?? req.tool}?`;
+  $("oracle-title").textContent = `Allow ${persona(req.god).title} to ${VERBS[req.tool] ?? req.tool}?`;
   $("oracle-detail").textContent = req.detail;
   $("oracle-risk").hidden = !req.risky;
-  $("oracle-tool").textContent = req.tool;
-  document.querySelector(".oracle-card").classList.toggle("risky", req.risky);
+  $("oracle-tool").textContent = TOOL_NAMES[req.tool] ?? req.tool;
+  document.querySelector(".oracle").classList.toggle("risky", req.risky);
   $("oracle").hidden = false;
   $("oracle-yes").focus();
 }
@@ -377,9 +376,8 @@ function answerOracle(answer) {
   const next = oracleQueue.shift();
   if (!next) return;
   api.approve(next.id, answer);
-  // A plain "yes" shows as the tool running; only the memorable answers get a line.
-  if (answer === "always") entry("notice", `🔮 The Oracle allows ${next.req.tool} for the rest of this session.`);
-  if (answer === "no") entry("notice", `🔮 The Oracle forbids it: ${next.req.summary}`);
+  if (answer === "always") line("note", `${persona(next.req.god).title} may keep ${TOOL_NAMES[next.req.tool] ?? next.req.tool} without asking, for the rest of this session.`);
+  if (answer === "no") line("note", `Denied: ${next.req.summary}`);
   showOracle();
 }
 
@@ -389,26 +387,27 @@ function setBusy(b) {
   busy = b;
   $("prompt").disabled = b;
   $("send").disabled = b;
-  document.querySelectorAll(".chip").forEach((c) => (c.disabled = b));
+  document.querySelectorAll(".shortcut").forEach((c) => (c.disabled = b));
   if (!b) $("prompt").focus();
 }
 
-async function submit(line) {
-  const text = line.trim();
+async function submit(raw) {
+  const text = raw.trim();
   if (!text || busy) return;
   $("prompt").value = "";
   autosize();
-  const user = el("div", "entry user");
-  user.appendChild(el("div", "bubble", text));
-  append(user);
-  document.querySelector(".welcome")?.remove();
+  const you = el("div", "you");
+  you.appendChild(el("p", "", text));
+  append(you);
+  scrollDown(true);
   setBusy(true);
   try {
     state = await api.submit(text);
-    renderToggles();
-    renderProfile();
+    renderTools();
+    renderRank();
+    renderStats();
   } catch (err) {
-    entry("error", `⚡ ${err?.message ?? err}`);
+    line("fail", String(err?.message ?? err));
   } finally {
     setBusy(false);
     setWorking(null);
@@ -418,11 +417,11 @@ async function submit(line) {
 function autosize() {
   const t = $("prompt");
   t.style.height = "auto";
-  t.style.height = `${Math.min(t.scrollHeight, 180)}px`;
+  t.style.height = `${Math.min(t.scrollHeight, 200)}px`;
 }
 
-function wireInput() {
-  $("composer").addEventListener("submit", (e) => {
+function wire() {
+  $("form").addEventListener("submit", (e) => {
     e.preventDefault();
     void submit($("prompt").value);
   });
@@ -433,11 +432,11 @@ function wireInput() {
     }
   });
   $("prompt").addEventListener("input", autosize);
-  document.querySelectorAll(".chip").forEach((chip) =>
-    chip.addEventListener("click", () => {
-      if (chip.dataset.run) void submit(chip.dataset.run);
+  document.querySelectorAll(".shortcut").forEach((b) =>
+    b.addEventListener("click", () => {
+      if (b.dataset.run) void submit(b.dataset.run);
       else {
-        $("prompt").value = chip.dataset.insert;
+        $("prompt").value = b.dataset.insert;
         $("prompt").focus();
       }
     }),
@@ -452,7 +451,7 @@ function wireInput() {
     if (!snap) return;
     state = snap;
     renderAll();
-    entry("notice", `📁 Now working in ${state.root}`);
+    line("note", `Now working in ${state.root}`);
   });
   $("oracle-yes").addEventListener("click", () => answerOracle("yes"));
   $("oracle-always").addEventListener("click", () => answerOracle("always"));
@@ -476,7 +475,7 @@ function wireInput() {
 async function main() {
   state = await api.init();
   renderAll();
-  wireInput();
+  wire();
   api.onEvent((name, payload) => handlers[name]?.(payload));
   api.onApproval((id, req) => {
     flushLive();

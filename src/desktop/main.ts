@@ -171,8 +171,9 @@ async function createWindow(): Promise<void> {
     minWidth: 900,
     minHeight: 600,
     show: !smoke,
-    backgroundColor: "#0c0f22",
+    backgroundColor: "#171927",
     title: "Ambrosia",
+    icon: path.join(appRoot, "desktop", "icon.png"),
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(appRoot, "desktop", "preload.cjs"),

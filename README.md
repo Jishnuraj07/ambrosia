@@ -54,6 +54,8 @@ npm run desktop -- --demo    # a scripted demo project; no API key needed
 npm run package:desktop      # build release/Ambrosia 1.0.0.exe (portable) and an installer
 ```
 
+The app icon lives in `desktop/icon.svg`. After editing it, run `npx electron scripts/make-icon.mjs` to regenerate the PNGs that the window and the installer use.
+
 Click the folder in the top bar to switch projects. The Oracle takes `Y` / `A` / `N`, and `Esc` stops the gods.
 
 ## Commands

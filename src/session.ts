@@ -55,7 +55,9 @@ export class Session {
     for (const t of [...READ_ONLY_TOOLS, ...this.config.autoApprove]) this.alwaysAllow.add(t);
 
     try {
-      this.client = new Anthropic();
+      // Keys not scoped to a workspace must name one on every request.
+      const workspace = process.env.ANTHROPIC_WORKSPACE_ID ?? this.config.workspaceId;
+      this.client = new Anthropic(workspace ? { defaultHeaders: { "anthropic-workspace-id": workspace } } : {});
     } catch (err) {
       this.client = null;
       queueMicrotask(() => this.bus.emit("error", { message: describeError(err) }));

@@ -1,9 +1,11 @@
 /**
- * End-to-end smoke test without an API key: renders the real UI against a
- * scratch project, with a scripted stand-in for the model. Hephaestus finds a
- * failing test, fixes the bug and reruns; then Momus roasts the diff.
+ * End-to-end smoke test: renders the real UI against a scratch project.
+ * Hephaestus finds a failing test, fixes the bug and reruns; then Momus roasts
+ * the diff. By default the models are scripted stand-ins, so no API key is
+ * needed. With --live it uses the real models (and costs a little).
  *
- *   npx tsx scripts/smoke.tsx
+ *   npm run smoke
+ *   npm run smoke -- --live
  */
 import fs from "node:fs";
 import os from "node:os";
@@ -13,6 +15,7 @@ import { PassThrough, Writable } from "node:stream";
 import React from "react";
 import { render } from "ink";
 
+const live = process.argv.includes("--live");
 const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "ambrosia-smoke-"));
 process.env.AMBROSIA_HOME = path.join(scratch, ".home");
 const project = path.join(scratch, "project");
@@ -74,12 +77,22 @@ function fakeClient(god: string) {
 }
 
 const session = new Session({ root: project, mute: true });
-const s = session as any;
-const approve = (req: any) => s.approve(req);
-const make = (god: string, tools?: string[]) =>
-  new Agent({ god: god as any, client: fakeClient(god), config: session.config, root: project, bus: session.bus, approve, tools });
-s.pantheon = { hephaestus: make("hephaestus"), athena: make("athena", READ_ONLY_TOOLS), momus: make("momus", READ_ONLY_TOOLS) };
-s.narrator.client = null; // template narration only
+if (!live) {
+  const s = session as any;
+  const approve = (req: any) => s.approve(req);
+  const make = (god: string, tools?: string[]) =>
+    new Agent({ god: god as any, client: fakeClient(god), config: session.config, root: project, bus: session.bus, approve, tools });
+  s.pantheon = { hephaestus: make("hephaestus"), athena: make("athena", READ_ONLY_TOOLS), momus: make("momus", READ_ONLY_TOOLS) };
+  s.narrator.client = null; // template narration only
+}
+let inputTokens = 0;
+let outputTokens = 0;
+session.bus.on("turn_end", (t) => {
+  inputTokens += t.inputTokens;
+  outputTokens += t.outputTokens;
+});
+const errors: string[] = [];
+session.bus.on("error", (e) => errors.push(e.message));
 
 // Fake terminal.
 const stdin = Object.assign(new PassThrough(), { isTTY: true, setRawMode() {}, ref() {}, unref() {} });
@@ -106,7 +119,7 @@ const type = async (text: string) => {
 };
 const waitIdle = async () => {
   await sleep(300);
-  for (let i = 0; i < 200 && session.busy; i++) {
+  for (let i = 0; i < (live ? 3000 : 200) && session.busy; i++) {
     stdin.write("y"); // answer any Oracle prompt
     await sleep(100);
   }
@@ -133,10 +146,13 @@ const checks: Array<[string, boolean]> = [
   ["monster spawned", /A (Harpy|Minotaur|Chimera|Hydra) appears/.test(plain)],
   ["monster slain", plain.includes("is slain")],
   ["First Blood earned", plain.includes("First Blood")],
-  ["Golden Fleece earned", plain.includes("Golden Fleece")],
+  ...(live ? [] : [["Golden Fleece earned", plain.includes("Golden Fleece")] as [string, boolean]]),
+  ["no errors", errors.length === 0],
   ["Hermes narrated", plain.includes("Hermes:")],
   ["profile saved", fs.existsSync(path.join(process.env.AMBROSIA_HOME!, "profile.json"))],
 ];
+if (errors.length) console.log("Errors:\n" + errors.join("\n"));
+if (live) console.log(`Tokens: ~${inputTokens} in, ${outputTokens} out`);
 for (const [name, ok] of checks) console.log(`${ok ? "PASS" : "FAIL"}  ${name}`);
 fs.rmSync(scratch, { recursive: true, force: true });
 process.exit(checks.every(([, ok]) => ok) ? 0 : 1);

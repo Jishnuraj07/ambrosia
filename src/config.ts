@@ -13,6 +13,8 @@ export interface Config {
   narrator: boolean;
   /** Tools that never ask the Oracle. Read-only tools are always allowed. */
   autoApprove: string[];
+  /** For API keys not scoped to a workspace. ANTHROPIC_WORKSPACE_ID overrides it. */
+  workspaceId?: string;
 }
 
 export const DEFAULT_CONFIG: Config = {

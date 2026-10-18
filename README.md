@@ -37,6 +37,7 @@ Requires Node 20 or later.
 ```sh
 npm install
 export ANTHROPIC_API_KEY=sk-ant-...      # PowerShell: $env:ANTHROPIC_API_KEY = "sk-ant-..."
+export ANTHROPIC_WORKSPACE_ID=wrkspc_...   # only if your key is not scoped to a workspace
 npm start                                # or: node bin/ambrosia.mjs [task]
 npm link                                 # optional: puts `ambrosia` on your PATH
 ```
@@ -60,7 +61,7 @@ Flags: `--serious`, `--mute`, `--yolo` (approve everything; careful), `--cwd <di
 
 ## Config
 
-`~/.ambrosia/config.json` is written on first run. It sets each god's model and effort, sound, tts, the narrator, and `autoApprove` (tools that never ask the Oracle). Your progress lives in `~/.ambrosia/profile.json`. Set `AMBROSIA_HOME` to keep them somewhere else.
+`~/.ambrosia/config.json` is written on first run. It sets each god's model and effort, sound, tts, the narrator, `autoApprove` (tools that never ask the Oracle), and `workspaceId` (for keys not scoped to a workspace). Your progress lives in `~/.ambrosia/profile.json`. Set `AMBROSIA_HOME` to keep them somewhere else.
 
 ## Development
 
@@ -70,7 +71,8 @@ npm test            # unit tests (82): tools, safety, parsing, game engine, agen
                     #   narrator, session commands and approvals, config/profile, UI components
 npm run typecheck
 npm run smoke       # drives the real UI end to end with a scripted model; no API key needed
-npm run check       # all of the above, as CI runs it
+npm run smoke -- --live   # the same run against the real models (costs a few cents)
+npm run check       # typecheck, tests, build and the scripted smoke test, as CI runs it
 ```
 
 CI (`.github/workflows/ci.yml`) runs `check` on Ubuntu and Windows with Node 20 and 24.

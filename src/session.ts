@@ -23,6 +23,8 @@ export interface SessionOptions {
   serious?: boolean;
   mute?: boolean;
   yolo?: boolean;
+  /** Use this client instead of building one (the scripted demo, tests). */
+  client?: Anthropic;
 }
 
 /** Everything behind the UI: the pantheon, the game, the narrator and the sound. */
@@ -54,13 +56,17 @@ export class Session {
     this.yolo = !!opts.yolo;
     for (const t of [...READ_ONLY_TOOLS, ...this.config.autoApprove]) this.alwaysAllow.add(t);
 
-    try {
-      // Keys not scoped to a workspace must name one on every request.
-      const workspace = process.env.ANTHROPIC_WORKSPACE_ID ?? this.config.workspaceId;
-      this.client = new Anthropic(workspace ? { defaultHeaders: { "anthropic-workspace-id": workspace } } : {});
-    } catch (err) {
-      this.client = null;
-      queueMicrotask(() => this.bus.emit("error", { message: describeError(err) }));
+    if (opts.client) {
+      this.client = opts.client;
+    } else {
+      try {
+        // Keys not scoped to a workspace must name one on every request.
+        const workspace = process.env.ANTHROPIC_WORKSPACE_ID ?? this.config.workspaceId;
+        this.client = new Anthropic(workspace ? { defaultHeaders: { "anthropic-workspace-id": workspace } } : {});
+      } catch (err) {
+        this.client = null;
+        queueMicrotask(() => this.bus.emit("error", { message: describeError(err) }));
+      }
     }
 
     if (this.client) {
@@ -80,7 +86,7 @@ export class Session {
     this.wireSound();
     this.engine.startSession();
     if (this.sound && !this.serious) play("start");
-    if (!hasCredentials()) {
+    if (!opts.client && !hasCredentials()) {
       queueMicrotask(() =>
         this.bus.emit("notice", {
           text: "⚠ No Anthropic credentials found. Set ANTHROPIC_API_KEY (or run `ant auth login`) before giving the gods a task.",

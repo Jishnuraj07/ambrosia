@@ -10,10 +10,13 @@
     "build": "tsc -p tsconfig.build.json",
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
     "prebuild": "npm run clean",
-    "check": "npm run typecheck && npm test && npm run build && npm run smoke"
+    "check": "npm run typecheck && npm test && npm run build && npm run smoke",
+    "desktop": "npm run build && electron .",
+    "smoke:desktop": "npm run build && electron . --smoke --shots=shots",
+    "package:desktop": "npm run build && electron-builder"
   },
   "keywords": [],
-  "author": "",
+  "author": "jishnuneoz",
   "license": "ISC",
   "type": "module",
   "dependencies": {
@@ -29,12 +32,16 @@
   "devDependencies": {
     "@types/node": "^26.6.5",
     "@types/react": "^19.3.0",
+    "electron": "^44.9.0",
+    "electron-builder": "^26.15.3",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vitest": "^5.0.5"
   },
   "allowScripts": {
-    "esbuild@0.28.2": true
+    "esbuild@0.28.2": true,
+    "electron@44.9.0": true,
+    "electron-winstaller": false
   },
   "bin": {
     "ambrosia": "bin/ambrosia.mjs"
@@ -46,6 +53,47 @@
     "bin",
     "dist",
     "src",
+    "desktop",
     "README.md"
-  ]
+  ],
+  "main": "dist/desktop/main.js",
+  "build": {
+    "appId": "dev.ambrosia.desktop",
+    "productName": "Ambrosia",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "desktop/**/*",
+      "package.json"
+    ],
+    "asar": true,
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "mac": {
+      "target": "dmg"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
+  }
 }

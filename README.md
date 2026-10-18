@@ -44,6 +44,18 @@ npm link                                 # optional: puts `ambrosia` on your PAT
 
 Run it from inside the project you want to work on, or point it there with `--cwd <dir>`.
 
+## Desktop app
+
+The same pantheon in a window. It has a god chat, an arena where monsters take hits and fall, a rank and XP bar, a labours board, and the Oracle as a dialog. The agent, the game and your progress are shared with the terminal version.
+
+```sh
+npm run desktop              # open the last project, or pick a folder
+npm run desktop -- --demo    # a scripted demo project; no API key needed
+npm run package:desktop      # build release/Ambrosia 1.0.0.exe (portable) and an installer
+```
+
+Click the folder in the top bar to switch projects. The Oracle takes `Y` / `A` / `N`, and `Esc` stops the gods.
+
 ## Commands
 
 | | |
@@ -73,6 +85,7 @@ npm run typecheck
 npm run smoke       # drives the real UI end to end with a scripted model; no API key needed
 npm run smoke -- --live   # the same run against the real models (costs a few cents)
 npm run check       # typecheck, tests, build and the scripted smoke test, as CI runs it
+npm run smoke:desktop     # drives the desktop window through the demo; screenshots in shots/
 ```
 
 CI (`.github/workflows/ci.yml`) runs `check` on Ubuntu and Windows with Node 20 and 24.

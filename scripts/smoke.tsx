@@ -10,7 +10,6 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { execSync } from "node:child_process";
 import { PassThrough, Writable } from "node:stream";
 import React from "react";
 import { render } from "ink";
@@ -19,72 +18,13 @@ const live = process.argv.includes("--live");
 const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "ambrosia-smoke-"));
 process.env.AMBROSIA_HOME = path.join(scratch, ".home");
 const project = path.join(scratch, "project");
-fs.mkdirSync(project);
-fs.writeFileSync(path.join(project, "math.mjs"), "export const add = (a, b) => a - b;\n");
-fs.writeFileSync(
-  path.join(project, "math.test.mjs"),
-  `import test from "node:test";
-import assert from "node:assert";
-import { add } from "./math.mjs";
-test("adds", () => assert.equal(add(2, 2), 4));
-test("adds negatives", () => assert.equal(add(-1, -1), -2));
-test("adds zero", () => assert.equal(add(0, 0), 0));
-`,
-);
-execSync('git init -q && git add . && git -c user.email=a@b -c user.name=smoke commit -qm init', { cwd: project });
 
 const { Session } = await import("../src/session.js");
-const { Agent } = await import("../src/agent/loop.js");
 const { App } = await import("../src/ui/App.js");
-const { READ_ONLY_TOOLS } = await import("../src/agent/tools.js");
+const { createDemoProject, createScriptedClient, demoScripts } = await import("../src/testing/demo.js");
 
-const scripts: Record<string, any[]> = {
-  hephaestus: [
-    { stop_reason: "tool_use", content: [{ type: "text", text: "Let's see what's cracked." }, { type: "tool_use", id: "h1", name: "run_tests", input: { command: "node --test" } }] },
-    { stop_reason: "tool_use", content: [{ type: "tool_use", id: "h2", name: "read_file", input: { path: "math.mjs" } }] },
-    { stop_reason: "tool_use", content: [{ type: "tool_use", id: "h3", name: "edit_file", input: { path: "math.mjs", old_string: "a - b", new_string: "a + b" } }] },
-    { stop_reason: "tool_use", content: [{ type: "tool_use", id: "h4", name: "run_tests", input: { command: "node --test" } }] },
-    { stop_reason: "end_turn", content: [{ type: "text", text: "Fixed: `add` subtracted instead of adding. All 3 tests pass. Good metal now." }] },
-  ],
-  momus: [
-    { stop_reason: "end_turn", content: [{ type: "text", text: "A one-character fix. Truly, the bards will sing of it.\n\nNo real findings.\n\nVERDICT: APPROVED" }] },
-  ],
-};
-
-function fakeClient(god: string) {
-  return {
-    beta: {
-      messages: {
-        stream() {
-          const msg = scripts[god].shift();
-          const on: Record<string, (d: string) => void> = {};
-          return {
-            on(name: string, fn: (d: string) => void) {
-              on[name] = fn;
-              return this;
-            },
-            async finalMessage() {
-              await new Promise((r) => setTimeout(r, 150));
-              on.thinking?.("Weighing where the crack in the casting is…");
-              for (const b of msg.content) if (b.type === "text") on.text?.(b.text);
-              return { usage: { input_tokens: 1, output_tokens: 1 }, stop_details: null, ...msg };
-            },
-          };
-        },
-      },
-    },
-  } as any;
-}
-
-const session = new Session({ root: project, mute: true });
-if (!live) {
-  const s = session as any;
-  const approve = (req: any) => s.approve(req);
-  const make = (god: string, tools?: string[]) =>
-    new Agent({ god: god as any, client: fakeClient(god), config: session.config, root: project, bus: session.bus, approve, tools });
-  s.pantheon = { hephaestus: make("hephaestus"), athena: make("athena", READ_ONLY_TOOLS), momus: make("momus", READ_ONLY_TOOLS) };
-  s.narrator.client = null; // template narration only
-}
+createDemoProject(project);
+const session = new Session({ root: project, mute: true, client: live ? undefined : createScriptedClient(demoScripts()) });
 let inputTokens = 0;
 let outputTokens = 0;
 session.bus.on("turn_end", (t) => {

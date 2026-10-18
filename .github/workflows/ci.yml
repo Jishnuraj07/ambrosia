@@ -27,3 +27,12 @@ jobs:
         run: node bin/ambrosia.mjs --help
       - name: End-to-end smoke test
         run: npm run smoke
+      - name: Desktop app smoke test
+        if: runner.os == 'Windows'
+        run: npx electron . --smoke --shots=shots
+      - name: Upload desktop screenshots
+        if: runner.os == 'Windows' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-screenshots-node${{ matrix.node }}
+          path: shots/

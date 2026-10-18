@@ -65,9 +65,14 @@ Flags: `--serious`, `--mute`, `--yolo` (approve everything; careful), `--cwd <di
 ## Development
 
 ```sh
-npm test            # unit tests: parsing, safety, game engine, agent loop (mocked SDK)
+npm run build       # compile to dist/ (bin/ambrosia.mjs uses it when present, else runs src via tsx)
+npm test            # unit tests (82): tools, safety, parsing, game engine, agent loop, council,
+                    #   narrator, session commands and approvals, config/profile, UI components
 npm run typecheck
 npm run smoke       # drives the real UI end to end with a scripted model; no API key needed
+npm run check       # all of the above, as CI runs it
 ```
+
+CI (`.github/workflows/ci.yml`) runs `check` on Ubuntu and Windows with Node 20 and 24.
 
 Layout: `src/agent/` holds the loop, tools, personas and council. The game engine, labours, ranks and profile are in `src/game/`, sound and speech in `src/audio/`, and the Ink UI in `src/ui/`. `src/narrator.ts` is Hermes. Everything talks through the typed event bus in `src/events.ts`. The game, the narrator and the sound only listen to it, so the agent never depends on them.

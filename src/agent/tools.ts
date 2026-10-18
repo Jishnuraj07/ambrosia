@@ -55,15 +55,57 @@ export interface ShellResult {
   timedOut: boolean;
 }
 
+/**
+ * PowerShell's -Command reports any failure as exit code 1. Pass through the
+ * real exit code of the last native program instead, as bash would.
+ */
+function powershellScript(command: string): string {
+  return `${command}\n$__ok = $?; if ($LASTEXITCODE) { exit $LASTEXITCODE }; if (-not $__ok) { exit 1 }`;
+}
+
+/** Kill a process and everything it started, so grandchildren can't hold the pipes open. */
+function killTree(pid: number | undefined): void {
+  if (!pid) return;
+  try {
+    if (process.platform === "win32") {
+      spawn("taskkill", ["/pid", String(pid), "/T", "/F"], { stdio: "ignore", windowsHide: true }).on("error", () => {});
+    } else {
+      process.kill(-pid, "SIGKILL"); // the child leads its own process group (detached)
+    }
+  } catch {
+    // Already gone.
+  }
+}
+
 export function runShell(command: string, cwd: string, timeoutMs: number, signal?: AbortSignal): Promise<ShellResult> {
-  const [exe, args] =
-    process.platform === "win32"
-      ? ["powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", command]]
-      : ["bash", ["-lc", command]];
+  const win = process.platform === "win32";
+  const [exe, args] = win
+    ? ["powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", powershellScript(command)]]
+    : ["bash", ["-lc", command]];
   return new Promise((resolve) => {
-    const child = spawn(exe, args as string[], { cwd, env: { ...process.env, FORCE_COLOR: "0", CI: "1" }, signal });
+    const child = spawn(exe, args, {
+      cwd,
+      env: { ...process.env, FORCE_COLOR: "0", CI: "1" },
+      detached: !win,
+      windowsHide: true,
+    });
     let output = "";
     let timedOut = false;
+    let settled = false;
+    const finish = (exitCode: number | null, extra = "") => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      clearTimeout(grace);
+      signal?.removeEventListener("abort", stop);
+      resolve({ output: stripAnsi(output) + extra, exitCode, timedOut });
+    };
+    let grace: NodeJS.Timeout | undefined;
+    const stop = () => {
+      killTree(child.pid);
+      // If something still holds the pipes, don't wait on it forever.
+      grace = setTimeout(() => finish(null), 2000);
+    };
     const onData = (d: Buffer) => {
       output += d.toString("utf8");
       if (output.length > MAX_OUTPUT * 4) output = output.slice(-MAX_OUTPUT * 2);
@@ -72,16 +114,12 @@ export function runShell(command: string, cwd: string, timeoutMs: number, signal
     child.stderr.on("data", onData);
     const timer = setTimeout(() => {
       timedOut = true;
-      child.kill();
+      stop();
     }, timeoutMs);
-    child.on("error", (err) => {
-      clearTimeout(timer);
-      resolve({ output: output + `\n${err.message}`, exitCode: null, timedOut });
-    });
-    child.on("close", (code) => {
-      clearTimeout(timer);
-      resolve({ output: stripAnsi(output), exitCode: code, timedOut });
-    });
+    if (signal?.aborted) stop();
+    else signal?.addEventListener("abort", stop, { once: true });
+    child.on("error", (err) => finish(null, `\n${err.message}`));
+    child.on("close", (code) => finish(timedOut || signal?.aborted ? null : code));
   });
 }
 

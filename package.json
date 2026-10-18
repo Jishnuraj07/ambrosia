@@ -1,6 +1,6 @@
 {
   "name": "ambrosia",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A mythic coding-agent harness: Claude as a pantheon, your bugs as monsters.",
   "scripts": {
     "start": "tsx src/cli.tsx",

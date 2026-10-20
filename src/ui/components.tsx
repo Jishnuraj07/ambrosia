@@ -7,9 +7,8 @@ import type { ApprovalRequest } from "../agent/tools.js";
 import { PERSONAS, workingLine } from "../agent/personas.js";
 import { progress } from "../game/ranks.js";
 
-const NEON = "#ff2bd6";
-const ACID = "#c6ff3d";
-const CYAN = "#29e7ff";
+const YELLOW = "#fcee0a";
+const CYAN = "#00f0ff";
 const DIM = "gray";
 
 const BANNER = [
@@ -19,7 +18,7 @@ const BANNER = [
   " / ___ \\| |  | | |_) |  _ <| |_| |___) | | / ___ \\ ",
   "/_/   \\_\\_|  |_|____/|_| \\_\\\\___/|____/___/_/   \\_\\",
 ];
-const BANNER_COLORS = ["#ff2bd6", "#d24bff", "#9a6bff", "#5f9bff", "#29e7ff"];
+const BANNER_COLORS = ["#fcee0a", "#fcee0a", "#fcd20a", "#ff7a1f", "#ff003c"];
 
 export function Banner({ serious }: { serious: boolean }) {
   return (
@@ -62,7 +61,7 @@ export function Working({ crew, tick, thinking }: { crew: CrewName; tick: number
     <Box flexDirection="column" marginTop={1}>
       <Text>
         <Text color={PERSONAS[crew].color}>
-          <Spinner type="dots" />{" "}
+          <Spinner type="binary" />{" "}
         </Text>
         <CrewLabel crew={crew} />
         <Text color={DIM}> is {workingLine(crew, tick)}… (Esc to interrupt)</Text>
@@ -88,7 +87,7 @@ const TOOL_ICONS: Record<string, string> = {
 };
 
 export function ToolLine({ name, summary, ok, result }: { name: string; summary: string; ok?: boolean; result?: string }) {
-  const status = ok === undefined ? <Spinner type="line" /> : ok ? <Text color="green">✓</Text> : <Text color="red">✗</Text>;
+  const status = ok === undefined ? <Spinner type="squareCorners" /> : ok ? <Text color="green">✓</Text> : <Text color="red">✗</Text>;
   return (
     <Box flexDirection="column">
       <Text wrap="truncate-end">
@@ -130,12 +129,12 @@ export function StatusBar({ xp, serious, sound, tts }: { xp: number; serious: bo
   const filled = Math.round(fraction * width);
   return (
     <Text>
-      <Text color={NEON} bold>
+      <Text color={YELLOW} bold>
         {rank.glyph} {rank.name}
       </Text>{" "}
       <Text color={CYAN}>{"▰".repeat(filled)}</Text>
       <Text color={DIM}>{"▱".repeat(width - filled)}</Text>{" "}
-      <Text color={ACID}>◆ {xp}</Text>
+      <Text color={CYAN}>◆ {xp}</Text>
       <Text color={DIM}>
         {next ? ` / ${next.min} to ${next.name}` : " · top of the grid"}
         {" · "}
@@ -147,12 +146,12 @@ export function StatusBar({ xp, serious, sound, tts }: { xp: number; serious: bo
 
 export function HackCard({ hack }: { hack: Hack }) {
   return (
-    <Box borderStyle="double" borderColor={ACID} paddingX={1} marginTop={1} flexDirection="column">
-      <Text color={ACID} bold>
+    <Box borderStyle="double" borderColor={CYAN} paddingX={1} marginTop={1} flexDirection="column">
+      <Text color={CYAN} bold>
         🔓 Hack unlocked: {hack.title}
       </Text>
       <Text>
-        {hack.description} <Text color={ACID}>+{hack.reward} cred</Text>
+        {hack.description} <Text color={CYAN}>+{hack.reward} cred</Text>
       </Text>
     </Box>
   );
@@ -160,8 +159,8 @@ export function HackCard({ hack }: { hack: Hack }) {
 
 export function RankUp({ rank }: { rank: string }) {
   return (
-    <Box borderStyle="bold" borderColor={NEON} paddingX={2} marginTop={1} justifyContent="center">
-      <Text color={NEON} bold>
+    <Box borderStyle="bold" borderColor={YELLOW} paddingX={2} marginTop={1} justifyContent="center">
+      <Text color={YELLOW} bold>
         ▲ UPGRADE INSTALLED ▲ You are now a {rank}
       </Text>
     </Box>

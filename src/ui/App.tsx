@@ -43,7 +43,7 @@ function EntryView({ e }: { e: Entry }) {
     case "user":
       return (
         <Box marginTop={1}>
-          <Text color="#ff2bd6" bold>
+          <Text color="#fcee0a" bold>
             ›{" "}
           </Text>
           <Text bold>{e.text}</Text>
@@ -56,7 +56,7 @@ function EntryView({ e }: { e: Entry }) {
     case "notice":
       return (
         <Box marginTop={1}>
-          <Text color="#7fdcff">{e.text}</Text>
+          <Text color="#00f0ff">{e.text}</Text>
         </Box>
       );
     case "error":
@@ -67,13 +67,13 @@ function EntryView({ e }: { e: Entry }) {
       );
     case "narration":
       return (
-        <Text color="#c6ff3d" italic>
+        <Text color="#ff3ec8" italic>
           📡 Radio: {e.text}
         </Text>
       );
     case "xp":
       return (
-        <Text color={e.amount > 0 ? "#c6ff3d" : "red"}>
+        <Text color={e.amount > 0 ? "#00f0ff" : "#ff003c"}>
           {"  "}◆ {e.amount > 0 ? "+" : ""}
           {e.amount} cred <Text color="gray">· {e.reason}</Text>
         </Text>
@@ -241,7 +241,7 @@ export function App({ session, initialPrompt }: { session: Session; initialPromp
     <Box flexDirection="column">
       <Static items={entries}>{(e) => (e.kind === "banner" ? <Banner key={e.id} serious={session.serious} /> : <EntryView key={e.id} e={e} />)}</Static>
 
-      {live?.text.trim() ? <CrewBubble crew={live.crew} text={live.text} /> : null}
+      {live?.text.trim() ? <CrewBubble crew={live.crew} text={live.text.trimEnd() + (Math.floor(tick / 6) % 2 ? "" : " ▌")} /> : null}
       {running.map((t) => (
         <ToolLine key={t.id} name={t.name} summary={t.summary} />
       ))}
@@ -255,7 +255,7 @@ export function App({ session, initialPrompt }: { session: Session; initialPromp
           <Text color="gray">{approval ? "Answer the Operator check above." : "The crew is on the job. Esc to interrupt."}</Text>
         ) : (
           <Box>
-            <Text color="#ff2bd6" bold>
+            <Text color="#fcee0a" bold>
               ›{" "}
             </Text>
             <TextInput value={input} onChange={setInput} onSubmit={(v) => void submit(v)} placeholder="What's the job?" />

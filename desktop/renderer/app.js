@@ -92,15 +92,20 @@ function line(cls, text) {
 
 // ---------- the crew speaking ----------
 
+const SCRAMBLE = "▓▒░█<>/\\|_-=+*#%01";
+const calm = () => document.body.classList.contains("no-anim") || matchMedia("(prefers-reduced-motion: reduce)").matches;
+
 function startLive(crew) {
-  live = { crew, md: null, text: "", thinking: "" };
+  live = { crew, md: null, text: "", shown: 0, thinking: "" };
 }
 
 /** Freeze what was streamed so far; the next words start a new message. */
 function flushLive() {
   if (live) {
+    if (live.md) drawLive(live.text.length, false);
     live.md = null;
     live.text = "";
+    live.shown = 0;
   }
 }
 
@@ -118,9 +123,51 @@ function renderLive() {
     msg.appendChild(live.md);
     append(msg);
   }
+  if (!revealing) {
+    revealing = true;
+    requestAnimationFrame(reveal);
+  }
+}
+
+let revealing = false;
+
+/**
+ * Type the streamed text out a few characters per frame. The step grows with
+ * the backlog, so a burst of tokens is caught up within a few frames.
+ */
+function reveal() {
+  if (!live || !live.md) {
+    revealing = false;
+    return;
+  }
+  const backlog = live.text.length - live.shown;
+  if (backlog === 0) {
+    // Caught up: leave the caret blinking; the next delta restarts the loop.
+    revealing = false;
+    return;
+  }
+  live.shown += calm() ? backlog : Math.max(2, Math.ceil(backlog / 6));
+  live.shown = Math.min(live.shown, live.text.length);
+  drawLive(live.shown, true);
+  requestAnimationFrame(reveal);
+}
+
+function drawLive(n, streaming) {
+  let text = live.text.slice(0, n);
   // Black ICE ends with a protocol line for the harness; show it as a tag instead.
-  const verdict = live.text.match(/VERDICT:\s*(APPROVED|REVISE)/i);
-  live.md.innerHTML = markdown(live.text.replace(/\n?\s*VERDICT:\s*(APPROVED|REVISE)\s*$/i, ""));
+  const verdict = streaming ? null : text.match(/VERDICT:\s*(APPROVED|REVISE)/i);
+  text = streaming ? text.replace(/\n\s*VERDICT[\s\S]*$/i, "") : text.replace(/\n?\s*VERDICT:\s*(APPROVED|REVISE)\s*$/i, "");
+  live.md.innerHTML = markdown(text);
+  if (streaming && !calm()) {
+    // The leading edge: a few scrambling glyphs while text is still arriving, then a blinking block.
+    let host = live.md.lastElementChild ?? live.md;
+    while (["UL", "OL", "PRE"].includes(host.tagName) && host.lastElementChild) host = host.lastElementChild;
+    if (n < live.text.length) {
+      const k = Math.min(4, live.text.length - n);
+      host.appendChild(el("span", "scramble", Array.from({ length: k }, () => SCRAMBLE[Math.floor(Math.random() * SCRAMBLE.length)]).join("")));
+    }
+    host.appendChild(el("span", "caret"));
+  }
   if (verdict) {
     const approved = verdict[1].toUpperCase() === "APPROVED";
     live.md.appendChild(el("span", `verdict ${approved ? "approved" : "revise"}`, approved ? "Approved" : "Wants changes"));
@@ -138,7 +185,8 @@ function setWorking(crew) {
   w.hidden = false;
   w.style.setProperty("--crew", p.color);
   const flavour = p.workingLines[Math.floor(tick / 30) % p.workingLines.length];
-  $("working-text").textContent = `${p.title} is ${flavour}`;
+  const dots = Math.floor(tick / 5) % 4;
+  $("working-text").textContent = `${p.title} is ${flavour}${".".repeat(dots)}${" ".repeat(3 - dots)}`;
   const thought = live?.thinking?.replace(/\s+/g, " ").trim();
   $("working-thought").textContent = thought ? thought.slice(-140) : "";
 }

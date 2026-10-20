@@ -5,7 +5,7 @@ import fg from "fast-glob";
 import { z } from "zod";
 import type Anthropic from "@anthropic-ai/sdk";
 import type { Bus } from "../events.js";
-import type { GodName } from "../config.js";
+import type { CrewName } from "../config.js";
 import { confine, isRisky } from "./safety.js";
 import { parseTestOutput, stripAnsi } from "./testParse.js";
 
@@ -13,7 +13,7 @@ const MAX_OUTPUT = 30_000;
 const IGNORE = ["**/node_modules/**", "**/.git/**", "**/dist/**", "**/build/**", "**/.venv/**", "**/target/**"];
 
 export interface ApprovalRequest {
-  god: GodName;
+  crew: CrewName;
   tool: string;
   summary: string;
   detail: string;
@@ -22,9 +22,9 @@ export interface ApprovalRequest {
 
 export interface ToolContext {
   root: string;
-  god: GodName;
+  crew: CrewName;
   bus: Bus;
-  /** Ask the Oracle (the user). Resolves true when the action may go ahead. */
+  /** Ask the Operator (the user). Resolves true when the action may go ahead. */
   approve: (req: ApprovalRequest) => Promise<boolean>;
   signal?: AbortSignal;
 }
@@ -124,8 +124,8 @@ export function runShell(command: string, cwd: string, timeoutMs: number, signal
 }
 
 async function gate(ctx: ToolContext, tool: string, summary: string, detail: string, risky = false): Promise<boolean> {
-  const approved = await ctx.approve({ god: ctx.god, tool, summary, detail, risky });
-  ctx.bus.emit("approval", { god: ctx.god, tool, summary, approved, risky });
+  const approved = await ctx.approve({ crew: ctx.crew, tool, summary, detail, risky });
+  ctx.bus.emit("approval", { crew: ctx.crew, tool, summary, approved, risky });
   return approved;
 }
 
@@ -167,7 +167,7 @@ export const TOOLS = [
       }
       fs.mkdirSync(path.dirname(file), { recursive: true });
       fs.writeFileSync(file, i.content);
-      ctx.bus.emit("edit", { god: ctx.god, path: i.path });
+      ctx.bus.emit("edit", { crew: ctx.crew, path: i.path });
       return `${exists ? "Overwrote" : "Created"} ${i.path} (${lines} lines).`;
     },
   }),
@@ -198,7 +198,7 @@ export const TOOLS = [
       const preview = `${i.path}\n- ${i.old_string.split("\n").slice(0, 6).join("\n- ")}\n+ ${i.new_string.split("\n").slice(0, 6).join("\n+ ")}`;
       if (!(await gate(ctx, "edit_file", i.path, preview))) return DECLINED;
       fs.writeFileSync(file, i.replace_all ? text.split(oldS).join(newS) : text.replace(oldS, () => newS));
-      ctx.bus.emit("edit", { god: ctx.god, path: i.path });
+      ctx.bus.emit("edit", { crew: ctx.crew, path: i.path });
       return `Edited ${i.path} (${i.replace_all ? count : 1} replacement${count > 1 && i.replace_all ? "s" : ""}).`;
     },
   }),
@@ -257,11 +257,11 @@ export const TOOLS = [
       const risky = isRisky(i.command);
       const approved = await gate(ctx, "shell", i.command, i.command, risky);
       if (!approved) {
-        ctx.bus.emit("shell_result", { god: ctx.god, command: i.command, exitCode: null, risky, approved });
+        ctx.bus.emit("shell_result", { crew: ctx.crew, command: i.command, exitCode: null, risky, approved });
         return DECLINED;
       }
       const r = await runShell(i.command, ctx.root, i.timeout_ms ?? 120_000, ctx.signal);
-      ctx.bus.emit("shell_result", { god: ctx.god, command: i.command, exitCode: r.exitCode, risky, approved });
+      ctx.bus.emit("shell_result", { crew: ctx.crew, command: i.command, exitCode: r.exitCode, risky, approved });
       return clip(`${r.output.trim() || "(no output)"}\n\n[exit code ${r.exitCode}${r.timedOut ? ", timed out" : ""}]`);
     },
   }),

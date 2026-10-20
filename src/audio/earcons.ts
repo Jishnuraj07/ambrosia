@@ -14,15 +14,18 @@ export const EARCONS = {
   fail: [[392.0, 0.12], [311.13, 0.12], [261.63, 0.28]],
   hit: [[880, 0.05], [1174.66, 0.09]],
   grow: [[196, 0.1], [207.65, 0.1], [220, 0.22]],
-  oracle: [[1318.51, 0.35]],
-  labour: [[783.99, 0.08], [1046.5, 0.08], [1318.51, 0.08], [1567.98, 0.3]],
+  gate: [[1318.51, 0.06], [0, 0.03], [1318.51, 0.06], [0, 0.03], [1760, 0.2]],
+  hack: [[783.99, 0.06], [1046.5, 0.06], [1318.51, 0.06], [1567.98, 0.06], [2093, 0.26]],
   rankup: [[523.25, 0.12], [523.25, 0.06], [523.25, 0.06], [783.99, 0.18], [0, 0.04], [659.25, 0.1], [783.99, 0.36]],
   done: [[659.25, 0.07], [987.77, 0.16]],
 } satisfies Record<string, Note[]>;
 
 export type Earcon = keyof typeof EARCONS;
 
-/** Build a 16-bit mono WAV with soft attack/decay and a touch of overtone, like a struck bell. */
+/**
+ * Build a 16-bit mono WAV of soft-edged pulse waves with a slight detune, for a
+ * small analogue-synth blip rather than a bell.
+ */
 export function synthesize(notes: Note[]): Buffer {
   const samples: number[] = [];
   for (const [freq, dur] of notes) {
@@ -31,8 +34,10 @@ export function synthesize(notes: Note[]): Buffer {
       const t = i / RATE;
       const attack = Math.min(1, i / (RATE * 0.005));
       const decay = Math.exp(-3.5 * (t / dur));
-      const tone = freq ? Math.sin(2 * Math.PI * freq * t) + 0.3 * Math.sin(4 * Math.PI * freq * t) : 0;
-      samples.push(tone * attack * decay * 0.35);
+      // tanh of a boosted sine is a square with rounded corners: synthy, but not harsh.
+      const pulse = (f: number) => Math.tanh(3 * Math.sin(2 * Math.PI * f * t));
+      const tone = freq ? 0.6 * pulse(freq) + 0.4 * pulse(freq * 1.006) : 0;
+      samples.push(tone * attack * decay * 0.22);
     }
   }
   const data = Buffer.alloc(samples.length * 2);
@@ -54,7 +59,7 @@ export function synthesize(notes: Note[]): Buffer {
   return Buffer.concat([header, data]);
 }
 
-const dir = path.join(os.tmpdir(), "ambrosia-earcons");
+const dir = path.join(os.tmpdir(), "ambrosia-earcons-v2");
 
 function fileFor(name: Earcon): string {
   const file = path.join(dir, `${name}.wav`);

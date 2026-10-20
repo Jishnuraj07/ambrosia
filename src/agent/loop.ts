@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { Bus } from "../events.js";
-import type { Config, GodName } from "../config.js";
+import type { Config, CrewName } from "../config.js";
 import { systemPrompt } from "./personas.js";
 import { findTool, toolParams, type ApprovalRequest, type ToolContext } from "./tools.js";
 
@@ -10,13 +10,13 @@ type ContentParam = Anthropic.Beta.BetaContentBlockParam;
 const MAX_ITERATIONS = 60;
 
 export interface AgentOptions {
-  god: GodName;
+  crew: CrewName;
   client: Anthropic;
   config: Config;
   root: string;
   bus: Bus;
   approve: (req: ApprovalRequest) => Promise<boolean>;
-  /** Restrict the god to these tools. Omit for every tool; [] for none. */
+  /** Restrict the crew member to these tools. Omit for every tool; [] for none. */
   tools?: string[];
 }
 
@@ -31,18 +31,18 @@ function isModern(model: string): boolean {
 }
 
 /**
- * One god's conversation. The history is append-only (never edited), which keeps
+ * One crew member's conversation. The history is append-only (never edited), which keeps
  * the prompt cache warm and replayed thinking blocks valid.
  */
 export class Agent {
-  readonly god: GodName;
+  readonly crew: CrewName;
   private messages: MessageParam[] = [];
   private readonly system: string;
   private readonly tools: Anthropic.Beta.BetaTool[];
 
   constructor(private opts: AgentOptions) {
-    this.god = opts.god;
-    this.system = systemPrompt(opts.god, opts.root);
+    this.crew = opts.crew;
+    this.system = systemPrompt(opts.crew, opts.root);
     this.tools = opts.tools && opts.tools.length === 0 ? [] : toolParams(opts.tools);
   }
 
@@ -51,7 +51,7 @@ export class Agent {
   }
 
   get model(): string {
-    return this.opts.config.models[this.god];
+    return this.opts.config.models[this.crew];
   }
 
   private params(): Anthropic.Beta.MessageCreateParamsNonStreaming {
@@ -67,7 +67,7 @@ export class Agent {
       ...(modern
         ? {
             thinking: { type: "adaptive", display: "summarized" },
-            output_config: { effort: this.opts.config.effort[this.god] },
+            output_config: { effort: this.opts.config.effort[this.crew] },
             betas: ["server-side-fallback-2026-07-01"],
             fallbacks: "default",
           }
@@ -78,7 +78,7 @@ export class Agent {
   async run(prompt: string | ContentParam[], signal?: AbortSignal): Promise<RunResult> {
     const { bus, client } = this.opts;
     this.messages.push({ role: "user", content: prompt });
-    bus.emit("turn_start", { god: this.god });
+    bus.emit("turn_start", { crew: this.crew });
 
     let finalText = "";
     let stopReason: string | null = null;
@@ -93,8 +93,8 @@ export class Agent {
           break;
         }
         const stream = client.beta.messages.stream(this.params(), { signal });
-        stream.on("text", (delta) => bus.emit("text", { god: this.god, delta }));
-        stream.on("thinking", (delta) => bus.emit("thinking", { god: this.god, delta }));
+        stream.on("text", (delta) => bus.emit("text", { crew: this.crew, delta }));
+        stream.on("thinking", (delta) => bus.emit("thinking", { crew: this.crew, delta }));
 
         let message: Anthropic.Beta.BetaMessage;
         try {
@@ -119,7 +119,7 @@ export class Agent {
 
         if (message.stop_reason === "refusal") {
           const category = message.stop_details?.category ?? "unspecified";
-          bus.emit("notice", { text: `${this.god} declined this request (${category}).` });
+          bus.emit("notice", { text: `${this.crew} declined this request (${category}).` });
           // Don't keep a refused turn: it may hold a half-written tool call.
           break;
         }
@@ -161,7 +161,7 @@ export class Agent {
     // A dangling tool_use would make the next request invalid. Close it out.
     this.closeDanglingToolUse();
 
-    bus.emit("turn_end", { god: this.god, text: finalText, stopReason, inputTokens, outputTokens });
+    bus.emit("turn_end", { crew: this.crew, text: finalText, stopReason, inputTokens, outputTokens });
     return { text: finalText, stopReason };
   }
 
@@ -183,15 +183,15 @@ export class Agent {
     }
     const input = parsed.data as never;
     const summary = tool.summarize(input);
-    bus.emit("tool_start", { god: this.god, id: use.id, name: use.name, summary });
-    const ctx: ToolContext = { root: this.opts.root, god: this.god, bus, approve: this.opts.approve, signal };
+    bus.emit("tool_start", { crew: this.crew, id: use.id, name: use.name, summary });
+    const ctx: ToolContext = { root: this.opts.root, crew: this.crew, bus, approve: this.opts.approve, signal };
     try {
       const out = await tool.run(input, ctx);
-      bus.emit("tool_end", { god: this.god, id: use.id, name: use.name, ok: true, summary: firstLine(out) });
+      bus.emit("tool_end", { crew: this.crew, id: use.id, name: use.name, ok: true, summary: firstLine(out) });
       return { type: "tool_result", tool_use_id: use.id, content: out };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      bus.emit("tool_end", { god: this.god, id: use.id, name: use.name, ok: false, summary: msg });
+      bus.emit("tool_end", { crew: this.crew, id: use.id, name: use.name, ok: false, summary: msg });
       return { type: "tool_result", tool_use_id: use.id, is_error: true, content: msg };
     }
   }
@@ -215,9 +215,9 @@ function firstLine(s: string): string {
 
 export function describeError(err: unknown): string {
   if (err instanceof Anthropic.AuthenticationError) {
-    return "The gods don't recognise you: authentication failed. Set ANTHROPIC_API_KEY or run `ant auth login`.";
+    return "Access denied: authentication failed. Set ANTHROPIC_API_KEY or run `ant auth login`.";
   }
-  if (err instanceof Anthropic.RateLimitError) return "Rate limited. Olympus is crowded; try again shortly.";
+  if (err instanceof Anthropic.RateLimitError) return "Rate limited. The net is congested; try again shortly.";
   if (err instanceof Anthropic.BadRequestError) return `Bad request: ${err.message}`;
   if (err instanceof Anthropic.APIError) return `API error ${err.status ?? ""}: ${err.message}`;
   return err instanceof Error ? err.message : String(err);

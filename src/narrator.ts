@@ -5,20 +5,20 @@ import { systemPrompt } from "./agent/personas.js";
 
 const TEMPLATES: Record<string, string[]> = {
   spawn: [
-    "A {boss} rises from the test suite. {hp} heads, all of them angry.",
-    "Look out: a {boss} with {hp} failing tests blocks the road.",
+    "A {boss} just booted inside the test suite. {hp} hostile processes.",
+    "Heads up, sprawl: a {boss} with {hp} failing tests is jamming the signal.",
   ],
   grow: [
-    "Cut one head, two grow back. The {boss} now has {hp}.",
-    "The {boss} grows stronger. {hp} failures and counting.",
+    "Kill one process, two respawn. The {boss} now runs {hp}.",
+    "The {boss} is replicating. {hp} failures and climbing.",
   ],
-  hit: ["A clean strike! The {boss} is down to {hp}.", "Steel finds its mark. {hp} left on the {boss}."],
-  defeated: ["The {boss} falls! The crowd in the amphitheatre goes wild.", "Green across the board. The {boss} is no more."],
-  labour: ["A new labour is complete: {title}. Heracles would nod.", "{title}! Someone carve that into marble."],
-  rank_up: ["Behold, a {rank} walks among us.", "The gods make room at the table for a new {rank}."],
-  denied: ["The Oracle says no. Wisdom, or cowardice? History will decide."],
-  error: ["Even the gods stumble. Dust off and try again."],
-  done: ["The smith sets down his hammer. Another job done.", "Work complete. Hermes is off to tell everyone."],
+  hit: ["Clean hit! The {boss} is down to {hp}.", "Packet lands. {hp} left on the {boss}."],
+  defeated: ["The {boss} is purged! The whole net lights up green.", "Green across the board. The {boss} is deleted."],
+  hack: ["New hack unlocked: {title}. The fixers are talking.", "{title}! Somebody spray that on a wall downtown."],
+  rank_up: ["New {rank} on the grid. Respect.", "The underground just bumped you to {rank}."],
+  denied: ["Operator says no. Paranoid, or smart? In this city, same thing."],
+  error: ["Signal dropped. Reboot and run it back."],
+  done: ["Fabricator powers down the rig. Job done.", "Job complete. Pirate Radio is putting it on the air."],
 };
 
 function pick(kind: string, vars: Record<string, string | number>): string {
@@ -30,7 +30,7 @@ function pick(kind: string, vars: Record<string, string | number>): string {
 const API_COOLDOWN_MS = 20_000;
 
 /**
- * Hermes watches the bus and comments. Notable moments are batched; a line is
+ * Pirate Radio watches the bus and comments. Notable moments are batched; a line is
  * written by the cheap narrator model when one was not used recently, and from
  * templates otherwise (or when there is no API access).
  */
@@ -48,19 +48,19 @@ export class Narrator {
     private config: Config,
     root: string,
   ) {
-    this.system = systemPrompt("hermes", root);
+    this.system = systemPrompt("radio", root);
 
     bus.on("edit", (e) => this.note(`edited ${e.path}`));
     bus.on("test_result", (r) => this.note(`ran tests: ${r.failed} failed, ${r.passed} passed`));
     bus.on("shell_result", (r) => r.approved && this.note(`ran \`${r.command.slice(0, 60)}\` (exit ${r.exitCode})`));
     bus.on("boss", ({ boss, change }) => {
       if (!boss || change === "none") return;
-      this.note(`monster ${change}: ${boss.name} at ${boss.hp}/${boss.maxHp} hp`);
+      this.note(`threat ${change}: ${boss.name} at ${boss.hp}/${boss.maxHp} hp`);
       this.trigger(change, { boss: boss.name, hp: boss.hp }, change === "spawn" || change === "defeated");
     });
-    bus.on("labour", (l) => {
-      this.note(`labour completed: ${l.title} (${l.description})`);
-      this.trigger("labour", { title: l.title }, true);
+    bus.on("hack", (l) => {
+      this.note(`hack completed: ${l.title} (${l.description})`);
+      this.trigger("hack", { title: l.title }, true);
     });
     bus.on("rank_up", (r) => {
       this.note(`player promoted to ${r.rank}`);
@@ -68,14 +68,14 @@ export class Narrator {
     });
     bus.on("approval", (a) => {
       if (a.approved) return;
-      this.note(`the user refused to let ${a.god} run ${a.tool}: ${a.summary.slice(0, 60)}`);
+      this.note(`the user refused to let ${a.crew} run ${a.tool}: ${a.summary.slice(0, 60)}`);
       this.trigger("denied", {}, false);
     });
-    bus.on("review", (r) => this.note(`Momus ${r.approved ? "approved" : "rejected"} the work`));
+    bus.on("review", (r) => this.note(`Black ICE ${r.approved ? "approved" : "rejected"} the work`));
     bus.on("error", () => this.trigger("error", {}, false));
     bus.on("turn_end", (t) => {
-      if (t.god !== "hephaestus" || t.stopReason !== "end_turn") return;
-      this.note("Hephaestus finished the task");
+      if (t.crew !== "fabricator" || t.stopReason !== "end_turn") return;
+      this.note("Fabricator finished the job");
       this.trigger("done", {}, true);
     });
   }
@@ -112,7 +112,7 @@ export class Narrator {
   }
 
   private async fromModel(events: string[]): Promise<string> {
-    const model = this.config.models.hermes;
+    const model = this.config.models.radio;
     try {
       const r = await this.client!.messages.create({
         model,

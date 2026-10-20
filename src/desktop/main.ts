@@ -1,7 +1,7 @@
 /**
  * Ambrosia desktop: an Electron window over the same Session the terminal UI
- * uses. The main process runs the gods, the game and the sound; it forwards
- * every bus event to the window and relays the user's input and Oracle answers
+ * uses. The main process runs the crew, the game and the sound; it forwards
+ * every bus event to the window and relays the user's input and Operator answers
  * back.
  *
  *   npm run desktop                 open the last project (or pick one)
@@ -16,7 +16,7 @@ import { fileURLToPath } from "node:url";
 import { Session, type ApprovalAnswer } from "../session.js";
 import { ambrosiaHome } from "../config.js";
 import type { EventName } from "../events.js";
-import { LABOURS } from "../game/labours.js";
+import { HACKS } from "../game/hacks.js";
 import { RANKS } from "../game/ranks.js";
 import { PERSONAS } from "../agent/personas.js";
 import { createDemoProject, createScriptedClient, demoScripts } from "../testing/demo.js";
@@ -26,7 +26,7 @@ const appRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", ".
 
 const EVENTS: EventName[] = [
   "turn_start", "text", "thinking", "tool_start", "tool_end", "approval", "edit", "shell_result", "test_result",
-  "review", "turn_end", "error", "notice", "xp", "rank_up", "labour", "boss", "narration",
+  "review", "turn_end", "error", "notice", "xp", "rank_up", "hack", "boss", "narration",
 ];
 
 const argv = process.argv.slice(1);
@@ -113,7 +113,7 @@ export function snapshot() {
     boss: s.engine.boss,
     ranks: RANKS,
     personas: PERSONAS,
-    labours: Object.values(LABOURS).map((l) => ({ ...l, earned: Boolean(p.labours[l.id]) })),
+    hacks: Object.values(HACKS).map((l) => ({ ...l, earned: Boolean(p.hacks[l.id]) })),
   };
 }
 
@@ -121,7 +121,7 @@ export type Snapshot = ReturnType<typeof snapshot>;
 
 async function pickFolder(): Promise<string | null> {
   const result = await dialog.showOpenDialog(win!, {
-    title: "Choose the project the gods will work on",
+    title: "Choose the project the crew will work on",
     properties: ["openDirectory"],
   });
   return result.canceled ? null : result.filePaths[0];

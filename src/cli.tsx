@@ -19,13 +19,13 @@ const { values, positionals } = parseArgs({
 });
 
 if (values.help) {
-  console.log(`ambrosia: a mythic coding-agent harness
+  console.log(`ambrosia: a cyberpunk coding-agent harness
 
 Usage: ambrosia [task] [options]
 
-  --serious       no narration, sound or ambrosia; just the agent
+  --serious       no narration, sound or cred; just the agent
   --mute          no sound or speech
-  --yolo          never ask the Oracle; approve every action (careful)
+  --yolo          never ask the Operator; approve every action (careful)
   --cwd <dir>     project root (default: current directory)
   --test-sounds   play every earcon and exit
 

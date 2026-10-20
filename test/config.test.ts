@@ -22,12 +22,24 @@ describe("loadConfig", () => {
   });
 
   it("merges a partial user config over the defaults", () => {
-    fs.writeFileSync(path.join(home, "config.json"), JSON.stringify({ sound: false, models: { momus: "claude-opus-5-5" } }));
+    fs.writeFileSync(path.join(home, "config.json"), JSON.stringify({ sound: false, models: { blackice: "claude-opus-5-5" } }));
     const c = loadConfig();
     expect(c.sound).toBe(false);
-    expect(c.models.momus).toBe("claude-opus-5-5");
-    expect(c.models.hephaestus).toBe(DEFAULT_CONFIG.models.hephaestus);
+    expect(c.models.blackice).toBe("claude-opus-5-5");
+    expect(c.models.fabricator).toBe(DEFAULT_CONFIG.models.fabricator);
     expect(c.effort).toEqual(DEFAULT_CONFIG.effort);
+  });
+
+  it("carries over models and effort set under the old god names", () => {
+    fs.writeFileSync(
+      path.join(home, "config.json"),
+      JSON.stringify({ models: { hephaestus: "claude-sonnet-5-5", momus: "claude-haiku-4-5", blackice: "claude-opus-5-5" }, effort: { athena: "max" } }),
+    );
+    const c = loadConfig();
+    expect(c.models.fabricator).toBe("claude-sonnet-5-5");
+    expect(c.models.blackice).toBe("claude-opus-5-5"); // the current key wins over the legacy one
+    expect(c.effort.strategos).toBe("max");
+    expect(Object.keys(c.models).sort()).toEqual(["blackice", "fabricator", "radio", "strategos"]);
   });
 
   it("survives a corrupt config file", () => {
@@ -40,7 +52,7 @@ describe("profile persistence", () => {
   it("round-trips through disk", () => {
     const p = emptyProfile();
     p.xp = 123;
-    p.labours.first_blood = "2026-10-18T00:00:00.000Z";
+    p.hacks.first_blood = "2026-10-18T00:00:00.000Z";
     p.stats.failCounts["a test"] = 2;
     saveProfile(p);
     expect(loadProfile()).toEqual(p);
@@ -59,6 +71,14 @@ describe("profile persistence", () => {
     expect(p.xp).toBe(50);
     expect(p.stats.sessions).toBe(3);
     expect(p.stats.failCounts).toEqual({});
+  });
+
+  it("keeps achievements earned as labours under the old Greek ids", () => {
+    const old = { xp: 300, labours: { first_blood: "2026-10-01T00:00:00.000Z", golden_fleece: "2026-10-02T00:00:00.000Z" } };
+    fs.writeFileSync(path.join(home, "profile.json"), JSON.stringify(old));
+    const p = loadProfile();
+    expect(p.hacks).toEqual({ first_blood: "2026-10-01T00:00:00.000Z", cracked_ice: "2026-10-02T00:00:00.000Z" });
+    expect(p).not.toHaveProperty("labours");
   });
 
   it("localDay uses the local calendar date", () => {

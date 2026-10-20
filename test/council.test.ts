@@ -3,14 +3,14 @@ import os from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { Bus } from "../src/events.js";
-import { currentDiff, runCouncil, runRoast, type Pantheon } from "../src/agent/council.js";
+import { currentDiff, runHeist, runRoast, type Crew } from "../src/agent/council.js";
 import type { RunResult } from "../src/agent/loop.js";
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "ambrosia-council-"));
 afterAll(() => fs.rmSync(root, { recursive: true, force: true }));
 
-/** A god that replies from a script and records what it was told. */
-function fakeGod(replies: string[]) {
+/** A crew member that replies from a script and records what it was told. */
+function fakeCrew(replies: string[]) {
   const prompts: string[] = [];
   return {
     prompts,
@@ -22,9 +22,9 @@ function fakeGod(replies: string[]) {
   };
 }
 
-function pantheon(athena: string[], hephaestus: string[], momus: string[]) {
-  const gods = { athena: fakeGod(athena), hephaestus: fakeGod(hephaestus), momus: fakeGod(momus) };
-  return { gods, p: gods as unknown as Pantheon };
+function crew(strategos: string[], fabricator: string[], blackice: string[]) {
+  const members = { strategos: fakeCrew(strategos), fabricator: fakeCrew(fabricator), blackice: fakeCrew(blackice) };
+  return { members, p: members as unknown as Crew };
 }
 
 function listen(bus: Bus) {
@@ -35,73 +35,73 @@ function listen(bus: Bus) {
   return { reviews, notices };
 }
 
-describe("runCouncil", () => {
-  it("passes Athena's plan to Hephaestus and stops when Momus approves", async () => {
+describe("runHeist", () => {
+  it("passes Strategos's plan to Fabricator and stops when Black ICE approves", async () => {
     const bus = new Bus();
     const { reviews } = listen(bus);
-    const { gods, p } = pantheon(["1. Edit cli.ts"], ["Added the flag."], ["Adequate.\nVERDICT: APPROVED"]);
+    const { members, p } = crew(["1. Edit cli.ts"], ["Added the flag."], ["Adequate.\nVERDICT: APPROVED"]);
 
-    await runCouncil(p, bus, root, "add a --version flag");
+    await runHeist(p, bus, root, "add a --version flag");
 
-    expect(gods.athena.prompts[0]).toContain("add a --version flag");
-    expect(gods.hephaestus.prompts).toHaveLength(1);
-    expect(gods.hephaestus.prompts[0]).toContain("1. Edit cli.ts");
-    expect(gods.momus.prompts[0]).toContain("Added the flag.");
-    expect(gods.momus.prompts[0]).toContain("<diff>");
+    expect(members.strategos.prompts[0]).toContain("add a --version flag");
+    expect(members.fabricator.prompts).toHaveLength(1);
+    expect(members.fabricator.prompts[0]).toContain("1. Edit cli.ts");
+    expect(members.blackice.prompts[0]).toContain("Added the flag.");
+    expect(members.blackice.prompts[0]).toContain("<diff>");
     expect(reviews).toEqual([true]);
   });
 
-  it("sends Hephaestus back once when Momus wants changes", async () => {
+  it("sends Fabricator back once when Black ICE wants changes", async () => {
     const bus = new Bus();
     const { reviews, notices } = listen(bus);
-    const { gods, p } = pantheon(["plan"], ["first try", "fixed it"], ["Off-by-one.\nVERDICT: REVISE", "Fine.\nVERDICT: APPROVED"]);
+    const { members, p } = crew(["plan"], ["first try", "fixed it"], ["Off-by-one.\nVERDICT: REVISE", "Fine.\nVERDICT: APPROVED"]);
 
-    await runCouncil(p, bus, root, "task");
+    await runHeist(p, bus, root, "task");
 
-    expect(gods.hephaestus.prompts).toHaveLength(2);
-    expect(gods.hephaestus.prompts[1]).toContain("Off-by-one.");
+    expect(members.fabricator.prompts).toHaveLength(2);
+    expect(members.fabricator.prompts[1]).toContain("Off-by-one.");
     expect(reviews).toEqual([false, true]);
-    expect(notices).toContain("Momus is not satisfied. Back to the forge.");
+    expect(notices).toContain("Black ICE found a hole. Back to the workbench.");
   });
 
   it("allows only one revision round", async () => {
     const bus = new Bus();
     const { reviews } = listen(bus);
-    const { gods, p } = pantheon(["plan"], ["a", "b", "c"], ["VERDICT: REVISE", "VERDICT: REVISE", "VERDICT: REVISE"]);
-    await runCouncil(p, bus, root, "task");
-    expect(gods.hephaestus.prompts).toHaveLength(2);
+    const { members, p } = crew(["plan"], ["a", "b", "c"], ["VERDICT: REVISE", "VERDICT: REVISE", "VERDICT: REVISE"]);
+    await runHeist(p, bus, root, "task");
+    expect(members.fabricator.prompts).toHaveLength(2);
     expect(reviews).toEqual([false, false]);
   });
 
-  it("stops if a god's turn errors", async () => {
+  it("stops if a crew member's turn errors", async () => {
     const bus = new Bus();
-    const { gods, p } = pantheon(["plan"], [], []);
-    gods.athena.run = async () => ({ text: "", stopReason: "error" });
-    await runCouncil(p, bus, root, "task");
-    expect(gods.hephaestus.prompts).toEqual([]);
+    const { members, p } = crew(["plan"], [], []);
+    members.strategos.run = async () => ({ text: "", stopReason: "error" });
+    await runHeist(p, bus, root, "task");
+    expect(members.fabricator.prompts).toEqual([]);
   });
 
   it("stops when interrupted", async () => {
     const bus = new Bus();
     const ac = new AbortController();
-    const { gods, p } = pantheon(["plan"], ["built"], ["VERDICT: APPROVED"]);
-    const run = gods.athena.run.bind(gods.athena);
-    gods.athena.run = async (prompt: string) => {
+    const { members, p } = crew(["plan"], ["built"], ["VERDICT: APPROVED"]);
+    const run = members.strategos.run.bind(members.strategos);
+    members.strategos.run = async (prompt: string) => {
       ac.abort();
       return run(prompt);
     };
-    await runCouncil(p, bus, root, "task", ac.signal);
-    expect(gods.hephaestus.prompts).toEqual([]);
+    await runHeist(p, bus, root, "task", ac.signal);
+    expect(members.fabricator.prompts).toEqual([]);
   });
 });
 
 describe("runRoast", () => {
-  it("asks Momus about the diff and reports the verdict", async () => {
+  it("asks Black ICE about the diff and reports the verdict", async () => {
     const bus = new Bus();
     const { reviews } = listen(bus);
-    const { gods, p } = pantheon([], [], ["Pathetic.\nVERDICT: REVISE"]);
+    const { members, p } = crew([], [], ["Pathetic.\nVERDICT: REVISE"]);
     await runRoast(p, bus, root);
-    expect(gods.momus.prompts[0]).toMatch(/Roast the uncommitted changes/);
+    expect(members.blackice.prompts[0]).toMatch(/Roast the uncommitted changes/);
     expect(reviews).toEqual([false]);
   });
 });

@@ -1,17 +1,18 @@
 import fs from "node:fs";
 import path from "node:path";
 import { ambrosiaHome } from "../config.js";
+import { LEGACY_HACK_IDS } from "./hacks.js";
 
 export interface Profile {
   xp: number;
-  labours: Record<string, string>; // id -> ISO date earned
+  hacks: Record<string, string>; // id -> ISO date earned
   stats: {
     sessions: number;
     testsFixed: number;
     bossesDefeated: number;
     tasks: number;
     reviewsPassed: number;
-    /** Runs in which each test was seen failing, for the Sisyphus labour. */
+    /** Runs in which each test was seen failing, for the Infinite Loop hack. */
     failCounts: Record<string, number>;
   };
   days: string[]; // YYYY-MM-DD days with a session, most recent last
@@ -20,7 +21,7 @@ export interface Profile {
 export function emptyProfile(): Profile {
   return {
     xp: 0,
-    labours: {},
+    hacks: {},
     stats: { sessions: 0, testsFixed: 0, bossesDefeated: 0, tasks: 0, reviewsPassed: 0, failCounts: {} },
     days: [],
   };
@@ -32,12 +33,20 @@ function file(): string {
 
 export function loadProfile(): Profile {
   try {
-    const p = JSON.parse(fs.readFileSync(file(), "utf8")) as Partial<Profile>;
+    const p = JSON.parse(fs.readFileSync(file(), "utf8")) as Partial<Profile> & { labours?: Record<string, string> };
     const base = emptyProfile();
-    return { ...base, ...p, stats: { ...base.stats, ...p.stats } };
+    const { labours, ...rest } = p;
+    return { ...base, ...rest, hacks: migrateHacks({ ...labours, ...p.hacks }), stats: { ...base.stats, ...p.stats } };
   } catch {
     return emptyProfile();
   }
+}
+
+/** Profiles from before the cyberpunk theme kept achievements as "labours" under Greek ids. */
+function migrateHacks(earned: Record<string, string>): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [id, date] of Object.entries(earned)) out[LEGACY_HACK_IDS[id] ?? id] ??= date;
+  return out;
 }
 
 export function saveProfile(p: Profile): void {

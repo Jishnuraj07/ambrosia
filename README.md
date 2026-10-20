@@ -1,6 +1,6 @@
 # Ambrosia
 
-A coding agent for your terminal, played as Greek myth. Claude works as a small pantheon, failing tests show up as monsters to slay, and your progress is counted in ambrosia.
+A coding agent for your terminal, played as a cyberpunk heist. Claude works as a small netrunner crew, failing tests boot up as hostile programs to purge, and your progress is counted in street cred.
 
 ```
     _    __  __ ____  ____   ___  ____ ___    _
@@ -12,23 +12,23 @@ A coding agent for your terminal, played as Greek myth. Claude works as a small 
 
 It is a real agent. It reads, searches and edits files, runs commands, and runs your tests. The fun sits on top as a separate layer, and `--serious` turns all of it off.
 
-## The pantheon
+## The crew
 
-| God | Role | Default model |
+| Crew member | Role | Default model |
 |---|---|---|
-| ⚒ **Hephaestus** | Does the work: reads, edits, runs | `claude-opus-5-5` |
-| 🦉 **Athena** | Plans in `/council` | `claude-opus-5-5` |
-| 🎭 **Momus** | Reviews and roasts your diff | `claude-sonnet-5-5` |
-| 🪽 **Hermes** | Narrates in one-liners | `claude-haiku-4-5` |
+| ⚙ **Fabricator** | Does the work: reads, edits, runs | `claude-opus-5-5` |
+| ◈ **Strategos** | Plans in `/heist` | `claude-opus-5-5` |
+| ❄ **Black ICE** | Reviews and roasts your diff | `claude-sonnet-5-5` |
+| 📡 **Pirate Radio** | Narrates in one-liners | `claude-haiku-4-5` |
 
 ## The game
 
-- **Ambrosia (XP).** You earn it for slaying failing tests, finishing tasks and winning Momus's approval. You lose some when a test you fixed breaks again.
-- **Ranks.** Mortal → Hero → Demigod → Titan → Olympian.
-- **Monsters.** When `run_tests` finds failures, a monster spawns with one HP per failing test: a Harpy, Minotaur, Chimera or Hydra. Fixes land as hits. If the failure count rises, it grows new heads.
-- **Labours.** There are 11 achievements, including First Blood, Hydra Slayer, Sisyphus, Icarus and Golden Fleece. `/labours` lists them.
-- **The Oracle.** Every write, edit and command asks your permission first. Risky commands (`rm -rf`, `git push --force` and similar) carry a warning.
-- **Sound.** Earcons are synthesised on the fly. Hermes can read his commentary aloud through Windows SAPI, `say` on macOS or `espeak` on Linux. Nothing extra needs installing.
+- **Cred (XP).** You earn it for killing failing tests, finishing jobs and getting past Black ICE. You lose some when a test you fixed breaks again.
+- **Ranks.** Script Kiddie → Runner → Netrunner → Ghost → Legend.
+- **Threats.** When `run_tests` finds failures, a threat boots up with one HP per failing test: a Bug, Daemon, Worm or Rogue AI. Fixes land as hits. If the failure count rises, it replicates.
+- **Hacks.** There are 11 achievements, including First Blood, Fork Bomb Survivor, Infinite Loop, Bricked and Cracked the ICE. `/hacks` lists them.
+- **The Operator check.** Every write, edit and command asks your permission first. Risky commands (`rm -rf`, `git push --force` and similar) carry a warning.
+- **Sound.** Synth earcons are generated on the fly. Pirate Radio can read its commentary aloud through Windows SAPI, `say` on macOS or `espeak` on Linux. Nothing extra needs installing.
 
 ## Setup
 
@@ -46,7 +46,7 @@ Run it from inside the project you want to work on, or point it there with `--cw
 
 ## Desktop app
 
-The same pantheon in a window. It has a god chat, an arena where monsters take hits and fall, a rank and XP bar, a labours board, and the Oracle as a dialog. The agent, the game and your progress are shared with the terminal version.
+The same crew in a window. It has the crew chat, an arena where threats take hits and get purged, a rank and cred bar, a hacks board, and the Operator check as a dialog. The agent, the game and your progress are shared with the terminal version.
 
 ```sh
 npm run desktop              # open the last project, or pick a folder
@@ -56,32 +56,34 @@ npm run package:desktop      # build release/Ambrosia 1.0.0.exe (portable) and a
 
 The app icon lives in `desktop/icon.svg`. After editing it, run `npx electron scripts/make-icon.mjs` to regenerate the PNGs that the window and the installer use.
 
-Click the folder in the top bar to switch projects. The Oracle takes `Y` / `A` / `N`, and `Esc` stops the gods.
+Click the folder in the top bar to switch projects. The Operator check takes `Y` / `A` / `N`, and `Esc` stops the crew.
 
 ## Commands
 
 | | |
 |---|---|
-| *any text* | a task for Hephaestus |
-| `/council <task>` | Athena plans, Hephaestus builds, Momus reviews (with one revision round) |
-| `/roast` | Momus reviews your uncommitted changes |
-| `/stats`, `/labours` | your record |
+| *any text* | a job for Fabricator |
+| `/heist <task>` | Strategos plans, Fabricator builds, Black ICE reviews (with one revision round). `/council` still works. |
+| `/roast` | Black ICE reviews your uncommitted changes |
+| `/stats`, `/hacks` | your record (`/labours` still works) |
 | `/mute`, `/tts` | sound and spoken narration |
 | `/serious` | toggle the fun |
 | `/clear`, `/quit` | |
-| `Esc` | interrupt the gods |
+| `Esc` | interrupt the crew |
 
 Flags: `--serious`, `--mute`, `--yolo` (approve everything; careful), `--cwd <dir>`, `--test-sounds`.
 
 ## Config
 
-`~/.ambrosia/config.json` is written on first run. It sets each god's model and effort, sound, tts, the narrator, `autoApprove` (tools that never ask the Oracle), and `workspaceId` (for keys not scoped to a workspace). Your progress lives in `~/.ambrosia/profile.json`. Set `AMBROSIA_HOME` to keep them somewhere else.
+`~/.ambrosia/config.json` is written on first run. It sets each crew member's model and effort (keys `fabricator`, `strategos`, `blackice`, `radio`), sound, tts, the narrator, `autoApprove` (tools that never ask the Operator), and `workspaceId` (for keys not scoped to a workspace). Your progress lives in `~/.ambrosia/profile.json`. Set `AMBROSIA_HOME` to keep them somewhere else.
+
+Upgrading from 1.1 or earlier: config keys named after the old gods (`hephaestus`, `athena`, `momus`, `hermes`) and achievements earned as labours are read and carried over automatically.
 
 ## Development
 
 ```sh
 npm run build       # compile to dist/ (bin/ambrosia.mjs uses it when present, else runs src via tsx)
-npm test            # unit tests (82): tools, safety, parsing, game engine, agent loop, council,
+npm test            # unit tests (84): tools, safety, parsing, game engine, agent loop, heist,
                     #   narrator, session commands and approvals, config/profile, UI components
 npm run typecheck
 npm run smoke       # drives the real UI end to end with a scripted model; no API key needed
@@ -92,4 +94,4 @@ npm run smoke:desktop     # drives the desktop window through the demo; screensh
 
 CI (`.github/workflows/ci.yml`) runs `check` on Ubuntu and Windows with Node 20 and 24.
 
-Layout: `src/agent/` holds the loop, tools, personas and council. The game engine, labours, ranks and profile are in `src/game/`, sound and speech in `src/audio/`, and the Ink UI in `src/ui/`. `src/narrator.ts` is Hermes. Everything talks through the typed event bus in `src/events.ts`. The game, the narrator and the sound only listen to it, so the agent never depends on them.
+Layout: `src/agent/` holds the loop, tools, personas and the heist (`council.ts`). The game engine, hacks, ranks and profile are in `src/game/`, sound and speech in `src/audio/`, and the Ink UI in `src/ui/`. `src/narrator.ts` is Pirate Radio. Everything talks through the typed event bus in `src/events.ts`. The game, the narrator and the sound only listen to it, so the agent never depends on them.

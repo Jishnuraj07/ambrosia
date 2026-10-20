@@ -1,13 +1,15 @@
 import React from "react";
 import { Box, Text } from "ink";
 import Spinner from "ink-spinner";
-import type { GodName } from "../config.js";
-import type { Boss, Labour } from "../events.js";
+import type { CrewName } from "../config.js";
+import type { Boss, Hack } from "../events.js";
 import type { ApprovalRequest } from "../agent/tools.js";
 import { PERSONAS, workingLine } from "../agent/personas.js";
 import { progress } from "../game/ranks.js";
 
-const GOLD = "#f5c518";
+const NEON = "#ff2bd6";
+const ACID = "#c6ff3d";
+const CYAN = "#29e7ff";
 const DIM = "gray";
 
 const BANNER = [
@@ -17,7 +19,7 @@ const BANNER = [
   " / ___ \\| |  | | |_) |  _ <| |_| |___) | | / ___ \\ ",
   "/_/   \\_\\_|  |_|____/|_| \\_\\\\___/|____/___/_/   \\_\\",
 ];
-const BANNER_COLORS = ["#fff3b0", "#ffe066", "#f5c518", "#e0a800", "#b8860b"];
+const BANNER_COLORS = ["#ff2bd6", "#d24bff", "#9a6bff", "#5f9bff", "#29e7ff"];
 
 export function Banner({ serious }: { serious: boolean }) {
   return (
@@ -30,14 +32,14 @@ export function Banner({ serious }: { serious: boolean }) {
       <Text color={DIM}>
         {serious
           ? "  serious mode · type a task, /help for commands"
-          : "  food of the gods · type a task for Hephaestus, /help for commands"}
+          : "  jack in · type a job for Fabricator, /help for commands"}
       </Text>
     </Box>
   );
 }
 
-export function GodLabel({ god }: { god: GodName }) {
-  const p = PERSONAS[god];
+export function CrewLabel({ crew }: { crew: CrewName }) {
+  const p = PERSONAS[crew];
   return (
     <Text color={p.color} bold>
       {p.glyph} {p.title}
@@ -45,25 +47,25 @@ export function GodLabel({ god }: { god: GodName }) {
   );
 }
 
-export function GodBubble({ god, text }: { god: GodName; text: string }) {
+export function CrewBubble({ crew, text }: { crew: CrewName; text: string }) {
   return (
-    <Box flexDirection="column" borderStyle="round" borderColor={PERSONAS[god].color} paddingX={1} marginTop={1}>
-      <GodLabel god={god} />
+    <Box flexDirection="column" borderStyle="round" borderColor={PERSONAS[crew].color} paddingX={1} marginTop={1}>
+      <CrewLabel crew={crew} />
       <Text>{text.trim()}</Text>
     </Box>
   );
 }
 
-export function Working({ god, tick, thinking }: { god: GodName; tick: number; thinking: string }) {
+export function Working({ crew, tick, thinking }: { crew: CrewName; tick: number; thinking: string }) {
   const snippet = thinking.replace(/\s+/g, " ").trim().slice(-90);
   return (
     <Box flexDirection="column" marginTop={1}>
       <Text>
-        <Text color={PERSONAS[god].color}>
+        <Text color={PERSONAS[crew].color}>
           <Spinner type="dots" />{" "}
         </Text>
-        <GodLabel god={god} />
-        <Text color={DIM}> is {workingLine(god, tick)}… (Esc to interrupt)</Text>
+        <CrewLabel crew={crew} />
+        <Text color={DIM}> is {workingLine(crew, tick)}… (Esc to interrupt)</Text>
       </Text>
       {snippet ? (
         <Text color={DIM} italic wrap="truncate-end">
@@ -76,13 +78,13 @@ export function Working({ god, tick, thinking }: { god: GodName; tick: number; t
 }
 
 const TOOL_ICONS: Record<string, string> = {
-  read_file: "📜",
-  write_file: "🔨",
-  edit_file: "🔧",
-  glob: "🧭",
-  grep: "🔍",
-  shell: "🔥",
-  run_tests: "⚔",
+  read_file: "📄",
+  write_file: "💾",
+  edit_file: "⌨",
+  glob: "🗂",
+  grep: "🔎",
+  shell: "⚡",
+  run_tests: "🧪",
 };
 
 export function ToolLine({ name, summary, ok, result }: { name: string; summary: string; ok?: boolean; result?: string }) {
@@ -109,10 +111,10 @@ export function BossBar({ boss }: { boss: Boss }) {
   return (
     <Text>
       <Text color="red" bold>
-        🐉 {boss.name}{" "}
+        ☣ {boss.name}{" "}
       </Text>
-      <Text color="red">{"♥".repeat(filled)}</Text>
-      <Text color={DIM}>{"♡".repeat(width - filled)}</Text>
+      <Text color="red">{"█".repeat(filled)}</Text>
+      <Text color={DIM}>{"░".repeat(width - filled)}</Text>
       <Text color={DIM}>
         {" "}
         {boss.hp}/{boss.maxHp} failing
@@ -128,14 +130,14 @@ export function StatusBar({ xp, serious, sound, tts }: { xp: number; serious: bo
   const filled = Math.round(fraction * width);
   return (
     <Text>
-      <Text color={GOLD} bold>
+      <Text color={NEON} bold>
         {rank.glyph} {rank.name}
       </Text>{" "}
-      <Text color={GOLD}>{"▰".repeat(filled)}</Text>
+      <Text color={CYAN}>{"▰".repeat(filled)}</Text>
       <Text color={DIM}>{"▱".repeat(width - filled)}</Text>{" "}
-      <Text color={GOLD}>⚱ {xp}</Text>
+      <Text color={ACID}>◆ {xp}</Text>
       <Text color={DIM}>
-        {next ? ` / ${next.min} to ${next.name}` : " · the summit"}
+        {next ? ` / ${next.min} to ${next.name}` : " · top of the grid"}
         {" · "}
         {sound ? (tts ? "🔊 voice" : "🔉") : "🔇"}
       </Text>
@@ -143,14 +145,14 @@ export function StatusBar({ xp, serious, sound, tts }: { xp: number; serious: bo
   );
 }
 
-export function LabourCard({ labour }: { labour: Labour }) {
+export function HackCard({ hack }: { hack: Hack }) {
   return (
-    <Box borderStyle="double" borderColor={GOLD} paddingX={1} marginTop={1} flexDirection="column">
-      <Text color={GOLD} bold>
-        🏆 Labour complete: {labour.title}
+    <Box borderStyle="double" borderColor={ACID} paddingX={1} marginTop={1} flexDirection="column">
+      <Text color={ACID} bold>
+        🔓 Hack unlocked: {hack.title}
       </Text>
       <Text>
-        {labour.description} <Text color={GOLD}>+{labour.reward} ambrosia</Text>
+        {hack.description} <Text color={ACID}>+{hack.reward} cred</Text>
       </Text>
     </Box>
   );
@@ -158,25 +160,25 @@ export function LabourCard({ labour }: { labour: Labour }) {
 
 export function RankUp({ rank }: { rank: string }) {
   return (
-    <Box borderStyle="bold" borderColor={GOLD} paddingX={2} marginTop={1} justifyContent="center">
-      <Text color={GOLD} bold>
-        ⚡ ASCENSION ⚡ You are now a {rank}
+    <Box borderStyle="bold" borderColor={NEON} paddingX={2} marginTop={1} justifyContent="center">
+      <Text color={NEON} bold>
+        ▲ UPGRADE INSTALLED ▲ You are now a {rank}
       </Text>
     </Box>
   );
 }
 
-export function OraclePrompt({ req }: { req: ApprovalRequest }) {
+export function GatePrompt({ req }: { req: ApprovalRequest }) {
   const verb =
     req.tool === "shell" ? "run a command" : req.tool === "run_tests" ? "run the tests" : req.tool === "write_file" ? "write a file" : "edit a file";
   return (
-    <Box flexDirection="column" borderStyle="round" borderColor={req.risky ? "red" : "#c9a0dc"} paddingX={1} marginTop={1}>
-      <Text color="#c9a0dc" bold>
-        🔮 The Oracle asks: may {PERSONAS[req.god].title} {verb}?
+    <Box flexDirection="column" borderStyle="round" borderColor={req.risky ? "red" : CYAN} paddingX={1} marginTop={1}>
+      <Text color={CYAN} bold>
+        ⌬ Operator check: may {PERSONAS[req.crew].title} {verb}?
       </Text>
       {req.risky ? (
         <Text color="red" bold>
-          ⚠ The smoke darkens. This one looks dangerous.
+          ⚠ Threat level high. This one looks dangerous.
         </Text>
       ) : null}
       <Text>{req.detail}</Text>

@@ -6,10 +6,10 @@ import { Bus } from "./events.js";
 import { loadConfig, type Config } from "./config.js";
 import { Agent, describeError } from "./agent/loop.js";
 import { READ_ONLY_TOOLS, type ApprovalRequest } from "./agent/tools.js";
-import { runCouncil, runRoast, type Pantheon } from "./agent/council.js";
+import { runHeist, runRoast, type Crew } from "./agent/council.js";
 import { GameEngine } from "./game/engine.js";
 import { loadProfile } from "./game/profile.js";
-import { LABOURS } from "./game/labours.js";
+import { HACKS } from "./game/hacks.js";
 import { progress } from "./game/ranks.js";
 import { streak } from "./game/profile.js";
 import { Narrator } from "./narrator.js";
@@ -27,7 +27,7 @@ export interface SessionOptions {
   client?: Anthropic;
 }
 
-/** Everything behind the UI: the pantheon, the game, the narrator and the sound. */
+/** Everything behind the UI: the crew, the game, the narrator and the sound. */
 export class Session {
   readonly bus = new Bus();
   readonly config: Config;
@@ -39,7 +39,7 @@ export class Session {
   busy = false;
 
   private client: Anthropic | null = null;
-  private pantheon: Pantheon | null = null;
+  private crew: Crew | null = null;
   private narrator: Narrator;
   private abort: AbortController | null = null;
   private alwaysAllow = new Set<string>();
@@ -71,12 +71,12 @@ export class Session {
 
     if (this.client) {
       const approve = (req: ApprovalRequest) => this.approve(req);
-      const make = (god: "hephaestus" | "athena" | "momus", tools?: string[]) =>
-        new Agent({ god, client: this.client!, config: this.config, root: this.root, bus: this.bus, approve, tools });
-      this.pantheon = {
-        hephaestus: make("hephaestus"),
-        athena: make("athena", READ_ONLY_TOOLS),
-        momus: make("momus", READ_ONLY_TOOLS),
+      const make = (crew: "fabricator" | "strategos" | "blackice", tools?: string[]) =>
+        new Agent({ crew, client: this.client!, config: this.config, root: this.root, bus: this.bus, approve, tools });
+      this.crew = {
+        fabricator: make("fabricator"),
+        strategos: make("strategos", READ_ONLY_TOOLS),
+        blackice: make("blackice", READ_ONLY_TOOLS),
       };
     }
 
@@ -89,7 +89,7 @@ export class Session {
     if (!opts.client && !hasCredentials()) {
       queueMicrotask(() =>
         this.bus.emit("notice", {
-          text: "⚠ No Anthropic credentials found. Set ANTHROPIC_API_KEY (or run `ant auth login`) before giving the gods a task.",
+          text: "⚠ No Anthropic credentials found. Set ANTHROPIC_API_KEY (or run `ant auth login`) before handing the crew a job.",
         }),
       );
     }
@@ -106,7 +106,7 @@ export class Session {
       // An earlier "always" in the queue may have covered this one.
       if (this.alwaysAllow.has(req.tool)) return true;
       if (!this.askUser) return false;
-      if (this.sound) play("oracle");
+      if (this.sound) play("gate");
       const answer = await this.askUser(req);
       if (answer === "always") this.alwaysAllow.add(req.tool);
       return answer !== "no";
@@ -133,34 +133,34 @@ export class Session {
         else if (change === "defeated") play("success");
       })(),
     );
-    b.on("labour", sfx(() => play("labour")));
+    b.on("hack", sfx(() => play("hack")));
     b.on("rank_up", sfx(() => play("rankup")));
     b.on("error", sfx(() => play("fail")));
     b.on("turn_end", (t) => {
-      if (t.god === "hephaestus" && t.stopReason === "end_turn") sfx(() => play("done"))();
+      if (t.crew === "fabricator" && t.stopReason === "end_turn") sfx(() => play("done"))();
     });
     b.on("narration", (n) => {
       if (this.tts && !this.serious) speak(n.text);
     });
   }
 
-  /** Esc: stop whatever the gods are doing. */
+  /** Esc: stop whatever the crew is doing. */
   interrupt(): void {
     this.abort?.abort();
     stopSpeaking();
   }
 
-  private async task(fn: (p: Pantheon, signal: AbortSignal) => Promise<unknown>): Promise<void> {
-    if (!this.pantheon) {
+  private async task(fn: (p: Crew, signal: AbortSignal) => Promise<unknown>): Promise<void> {
+    if (!this.crew) {
       this.bus.emit("error", {
-        message: "No connection to Olympus. Set ANTHROPIC_API_KEY (or run `ant auth login`) and restart.",
+        message: "No uplink. Set ANTHROPIC_API_KEY (or run `ant auth login`) and restart.",
       });
       return;
     }
     this.busy = true;
     this.abort = new AbortController();
     try {
-      await fn(this.pantheon, this.abort.signal);
+      await fn(this.crew, this.abort.signal);
     } catch (err) {
       if (!this.abort.signal.aborted) this.bus.emit("error", { message: describeError(err) });
     } finally {
@@ -170,11 +170,11 @@ export class Session {
     }
   }
 
-  /** Handle one line of input: a slash command or a task for Hephaestus. */
+  /** Handle one line of input: a slash command or a job for Fabricator. */
   async submit(line: string): Promise<"quit" | void> {
     const text = line.trim();
     if (!text) return;
-    if (!text.startsWith("/")) return this.task((p, s) => p.hephaestus.run(text, s));
+    if (!text.startsWith("/")) return this.task((p, s) => p.fabricator.run(text, s));
 
     const [cmd, ...rest] = text.split(/\s+/);
     const arg = rest.join(" ");
@@ -186,19 +186,21 @@ export class Session {
       case "/help":
         say(HELP);
         return;
+      case "/heist":
       case "/council":
-        if (!arg) return say("Usage: /council <task>");
+        if (!arg) return say(`Usage: ${cmd} <task>`);
         return this.task(async (p, s) => {
-          await runCouncil(p, this.bus, this.root, arg, s);
-          if (!s.aborted) this.engine.award("argonaut");
+          await runHeist(p, this.bus, this.root, arg, s);
+          if (!s.aborted) this.engine.award("full_crew");
         });
       case "/roast":
         return this.task((p, s) => runRoast(p, this.bus, this.root, s));
       case "/stats":
         say(this.stats());
         return;
+      case "/hacks":
       case "/labours":
-        say(this.labours());
+        say(this.hacks());
         return;
       case "/mute":
         this.sound = !this.sound;
@@ -206,21 +208,21 @@ export class Session {
           this.tts = false;
           stopSpeaking();
         }
-        say(this.sound ? "The lyre plays again." : "Silence falls over Olympus.");
+        say(this.sound ? "Audio back online." : "Audio offline. Running silent.");
         return;
       case "/tts":
         this.tts = !this.tts;
         if (!this.tts) stopSpeaking();
-        say(this.tts ? "Hermes will speak his commentary aloud." : "Hermes keeps his voice down.");
+        say(this.tts ? "Pirate Radio is live on the speakers." : "Pirate Radio goes text-only.");
         return;
       case "/serious":
         this.serious = !this.serious;
         this.applyMode();
-        say(this.serious ? "Serious mode: no narration, sound or ambrosia. Just the work." : "The festival resumes.");
+        say(this.serious ? "Serious mode: no narration, sound or cred. Just the work." : "Neon back on. The city wakes up.");
         return;
       case "/clear":
-        if (this.pantheon) Object.values(this.pantheon).forEach((a) => a.reset());
-        say("The gods forget everything said so far.");
+        if (this.crew) Object.values(this.crew).forEach((a) => a.reset());
+        say("Memory wiped. The crew forgets everything said so far.");
         return;
       default:
         say(`Unknown command ${cmd}. Try /help.`);
@@ -230,17 +232,17 @@ export class Session {
   private stats(): string {
     const p = this.engine.profile;
     const { rank, next } = progress(p.xp);
-    const earned = Object.keys(p.labours).length;
+    const earned = Object.keys(p.hacks).length;
     return [
-      `${rank.glyph} ${rank.name} · ${p.xp} ambrosia${next ? ` (${next.min - p.xp} to ${next.name})` : ""}`,
-      `Labours: ${earned}/${Object.keys(LABOURS).length} · Sessions: ${p.stats.sessions} · Day streak: ${streak(p.days)}`,
-      `Tests fixed: ${p.stats.testsFixed} · Monsters slain: ${p.stats.bossesDefeated} · Tasks: ${p.stats.tasks} · Momus approvals: ${p.stats.reviewsPassed}`,
+      `${rank.glyph} ${rank.name} · ${p.xp} cred${next ? ` (${next.min - p.xp} to ${next.name})` : ""}`,
+      `Hacks: ${earned}/${Object.keys(HACKS).length} · Sessions: ${p.stats.sessions} · Day streak: ${streak(p.days)}`,
+      `Tests fixed: ${p.stats.testsFixed} · Threats purged: ${p.stats.bossesDefeated} · Jobs: ${p.stats.tasks} · Black ICE approvals: ${p.stats.reviewsPassed}`,
     ].join("\n");
   }
 
-  private labours(): string {
-    const earned = this.engine.profile.labours;
-    return Object.values(LABOURS)
+  private hacks(): string {
+    const earned = this.engine.profile.hacks;
+    return Object.values(HACKS)
       .map((l) => `${earned[l.id] ? "✦" : "·"} ${l.title.padEnd(20)} ${l.description}  (+${l.reward})`)
       .join("\n");
   }
@@ -254,12 +256,12 @@ function hasCredentials(): boolean {
   return fs.existsSync(path.join(configDir, "anthropic"));
 }
 
-const HELP = `Talk to Hephaestus by typing a task. Commands:
-  /council <task>  Athena plans, Hephaestus builds, Momus reviews
-  /roast           Momus reviews your uncommitted changes
-  /stats           your rank, ambrosia and record
-  /labours         achievements earned and still to earn
+const HELP = `Type a job and Fabricator takes it. Commands:
+  /heist <task>    Strategos plans, Fabricator builds, Black ICE reviews
+  /roast           Black ICE reviews your uncommitted changes
+  /stats           your rank, cred and record
+  /hacks           achievements earned and still to earn
   /mute            toggle sound      /tts      toggle spoken narration
-  /serious         toggle the fun    /clear    forget the conversation
-  /quit            leave Olympus
-Esc interrupts the gods mid-work.`;
+  /serious         toggle the fun    /clear    wipe the conversation
+  /quit            jack out
+Esc interrupts the crew mid-job.`;

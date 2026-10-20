@@ -20,7 +20,7 @@ const VERBS = { shell: "run a command", run_tests: "run the tests", write_file: 
 
 let state = null; // snapshot from the main process
 let busy = false;
-let live = null; // the god currently speaking: { god, md, text, thinking }
+let live = null; // the crew currently speaking: { crew, md, text, thinking }
 const steps = new Map(); // tool_use id -> row
 let tick = 0;
 
@@ -70,7 +70,7 @@ function markdown(src) {
   return out.join("").replace(/\u0000(\d+)\u0000/g, (_, i) => blocks[Number(i)]);
 }
 
-const persona = (god) => state.personas[god];
+const persona = (crew) => state.personas[crew];
 
 function scrollDown(force = false) {
   const t = $("transcript");
@@ -90,10 +90,10 @@ function line(cls, text) {
   return append(el("div", cls, text));
 }
 
-// ---------- the gods speaking ----------
+// ---------- the crew speaking ----------
 
-function startLive(god) {
-  live = { god, md: null, text: "", thinking: "" };
+function startLive(crew) {
+  live = { crew, md: null, text: "", thinking: "" };
 }
 
 /** Freeze what was streamed so far; the next words start a new message. */
@@ -107,9 +107,9 @@ function flushLive() {
 function renderLive() {
   if (!live || !live.text.trim()) return;
   if (!live.md) {
-    const p = persona(live.god);
+    const p = persona(live.crew);
     const msg = el("div", "msg");
-    msg.style.setProperty("--god", p.color);
+    msg.style.setProperty("--crew", p.color);
     const who = el("div", "who");
     who.appendChild(el("span", "dot"));
     who.appendChild(el("span", "", p.title));
@@ -118,7 +118,7 @@ function renderLive() {
     msg.appendChild(live.md);
     append(msg);
   }
-  // Momus ends with a protocol line for the harness; show it as a tag instead.
+  // Black ICE ends with a protocol line for the harness; show it as a tag instead.
   const verdict = live.text.match(/VERDICT:\s*(APPROVED|REVISE)/i);
   live.md.innerHTML = markdown(live.text.replace(/\n?\s*VERDICT:\s*(APPROVED|REVISE)\s*$/i, ""));
   if (verdict) {
@@ -128,22 +128,22 @@ function renderLive() {
   scrollDown();
 }
 
-function setWorking(god) {
+function setWorking(crew) {
   const w = $("working");
-  if (!god) {
+  if (!crew) {
     w.hidden = true;
     return;
   }
-  const p = persona(god);
+  const p = persona(crew);
   w.hidden = false;
-  w.style.setProperty("--god", p.color);
+  w.style.setProperty("--crew", p.color);
   const flavour = p.workingLines[Math.floor(tick / 30) % p.workingLines.length];
   $("working-text").textContent = `${p.title} is ${flavour}`;
   const thought = live?.thinking?.replace(/\s+/g, " ").trim();
   $("working-thought").textContent = thought ? thought.slice(-140) : "";
 }
 
-// ---------- rank, arena, labours, record ----------
+// ---------- rank, arena, hacks, record ----------
 
 function rankInfo(xp) {
   let rank = state.ranks[0];
@@ -157,7 +157,7 @@ function renderRank() {
   $("rank-name").textContent = rank.name;
   $("xp-fill").style.width = `${Math.round(fraction * 100)}%`;
   $("xp-label").textContent = String(state.xp);
-  $("rank").title = next ? `${state.xp} ambrosia. ${next.min - state.xp} more to reach ${next.name}.` : `${state.xp} ambrosia. The highest rank.`;
+  $("rank").title = next ? `${state.xp} cred. ${next.min - state.xp} more to reach ${next.name}.` : `${state.xp} cred. The highest rank.`;
   $("rank").hidden = state.serious;
 }
 
@@ -173,9 +173,9 @@ function renderStats() {
   const s = state.stats;
   const rows = [
     ["Tests fixed", s.testsFixed],
-    ["Monsters slain", s.bossesDefeated],
-    ["Tasks done", s.tasks],
-    ["Momus approvals", s.reviewsPassed],
+    ["Threats purged", s.bossesDefeated],
+    ["Jobs done", s.tasks],
+    ["Black ICE approvals", s.reviewsPassed],
     ["Sessions", s.sessions],
   ];
   const dl = $("stats");
@@ -186,17 +186,17 @@ function renderStats() {
   }
 }
 
-function renderLabours(freshId) {
-  const ul = $("labours");
+function renderHacks(freshId) {
+  const ul = $("hacks");
   ul.replaceChildren();
-  for (const l of state.labours) {
+  for (const l of state.hacks) {
     const li = el("li", `${l.earned ? "earned" : ""}${l.id === freshId ? " fresh" : ""}`);
-    li.title = `${l.description}. Worth ${l.reward} ambrosia.`;
+    li.title = `${l.description}. Worth ${l.reward} cred.`;
     li.appendChild(el("span", "pip"));
     li.appendChild(el("span", "", l.title));
     ul.appendChild(li);
   }
-  $("labour-count").textContent = `${state.labours.filter((l) => l.earned).length} of ${state.labours.length}`;
+  $("hack-count").textContent = `${state.hacks.filter((l) => l.earned).length} of ${state.hacks.length}`;
 }
 
 function setRing(fraction) {
@@ -215,7 +215,7 @@ function renderArena(boss, change) {
   if (change === "defeated") {
     a.classList.remove("fighting");
     setRing(1);
-    $("foe-name").textContent = `${boss?.name ?? "Monster"} slain`;
+    $("foe-name").textContent = `${boss?.name ?? "Threat"} purged`;
     $("foe-hp").textContent = "All tests pass";
     pulseArena("won");
     setTimeout(() => {
@@ -245,7 +245,7 @@ function renderTools() {
   sound.querySelector("use").setAttribute("href", state.sound ? "#i-sound" : "#i-sound-off");
   sound.title = state.sound ? "Sound on" : "Sound off";
   $("toggle-tts").classList.toggle("on", state.tts);
-  $("toggle-tts").title = state.tts ? "Hermes reads his lines aloud (on)" : "Hermes reads his lines aloud (off)";
+  $("toggle-tts").title = state.tts ? "Pirate Radio reads its lines aloud (on)" : "Pirate Radio reads its lines aloud (off)";
   $("toggle-serious").classList.toggle("on", state.serious);
   $("toggle-serious").title = state.serious ? "Serious mode is on" : "Serious mode: no game, no narration";
   $("project-path").textContent = state.root;
@@ -256,18 +256,18 @@ function renderTools() {
 
 function renderAll() {
   renderRank();
-  renderLabours();
+  renderHacks();
   renderStats();
   renderTools();
   renderArena(state.boss, "none");
 }
 
-// ---------- events from the gods ----------
+// ---------- events from the crew ----------
 
 const handlers = {
-  turn_start({ god }) {
-    startLive(god);
-    setWorking(god);
+  turn_start({ crew }) {
+    startLive(crew);
+    setWorking(crew);
   },
   text({ delta }) {
     if (!live) return;
@@ -307,8 +307,8 @@ const handlers = {
     line("fail", message);
   },
   narration({ text }) {
-    const n = el("div", "hermes");
-    n.appendChild(el("b", "", "Hermes "));
+    const n = el("div", "radio");
+    n.appendChild(el("b", "", "Radio "));
     n.appendChild(document.createTextNode(text));
     append(n);
   },
@@ -316,25 +316,25 @@ const handlers = {
     state.xp = total;
     renderRank();
     floatXp(amount);
-    if (amount < 0) line("event foe", `A test you fixed broke again. ${amount} ambrosia.`);
+    if (amount < 0) line("event foe", `A test you fixed broke again. ${amount} cred.`);
   },
-  labour(labour) {
-    const l = state.labours.find((x) => x.id === labour.id);
+  hack(hack) {
+    const l = state.hacks.find((x) => x.id === hack.id);
     if (l) l.earned = true;
-    renderLabours(labour.id);
-    const row = el("div", "labour-line");
-    row.appendChild(icon("drop"));
+    renderHacks(hack.id);
+    const row = el("div", "hack-line");
+    row.appendChild(icon("unlock"));
     const text = el("div");
-    text.appendChild(el("strong", "", labour.title));
-    text.appendChild(el("span", "labour-desc", labour.description));
+    text.appendChild(el("strong", "", hack.title));
+    text.appendChild(el("span", "hack-desc", hack.description));
     row.appendChild(text);
-    row.appendChild(el("span", "gain", `+${labour.reward}`));
+    row.appendChild(el("span", "gain", `+${hack.reward}`));
     append(row);
   },
   rank_up({ rank }) {
-    $("ascension-rank").textContent = rank;
-    $("ascension").hidden = false;
-    setTimeout(() => ($("ascension").hidden = true), 3200);
+    $("upgrade-rank").textContent = rank;
+    $("upgrade").hidden = false;
+    setTimeout(() => ($("upgrade").hidden = true), 3200);
   },
   boss({ boss, change }) {
     if (state.serious || !boss || change === "none") return;
@@ -343,42 +343,43 @@ const handlers = {
     const n = boss.hp;
     const text = {
       spawn: `A ${boss.name} appears with ${n} failing test${n === 1 ? "" : "s"}.`,
-      grow: `The ${boss.name} grows new heads. ${n} tests failing now.`,
+      grow: `The ${boss.name} replicates. ${n} tests failing now.`,
       hit: `The ${boss.name} takes a hit. ${n} left.`,
-      defeated: `The ${boss.name} is slain. All tests pass.`,
+      defeated: `The ${boss.name} is purged. All tests pass.`,
     }[change];
     line(`event ${change === "defeated" ? "won" : "foe"}`, text);
   },
 };
 
-// ---------- the Oracle ----------
+// ---------- the Operator check ----------
 
-const oracleQueue = [];
+const gateQueue = [];
 
-function showOracle() {
-  const next = oracleQueue[0];
+function showGate() {
+  const next = gateQueue[0];
   if (!next) {
-    $("oracle").hidden = true;
+    $("gate").hidden = true;
     $("prompt").focus();
     return;
   }
   const { req } = next;
-  $("oracle-title").textContent = `Allow ${persona(req.god).title} to ${VERBS[req.tool] ?? req.tool}?`;
-  $("oracle-detail").textContent = req.detail;
-  $("oracle-risk").hidden = !req.risky;
-  $("oracle-tool").textContent = TOOL_NAMES[req.tool] ?? req.tool;
-  document.querySelector(".oracle").classList.toggle("risky", req.risky);
-  $("oracle").hidden = false;
-  $("oracle-yes").focus();
+  $("gate-title").textContent = `Allow ${persona(req.crew).title} to ${VERBS[req.tool] ?? req.tool}?`;
+  $("gate-detail").textContent = req.detail;
+  $("gate-risk").hidden = !req.risky;
+  $("gate-eyebrow").textContent = req.risky ? "Operator check · high risk" : "Operator check";
+  $("gate-tool").textContent = TOOL_NAMES[req.tool] ?? req.tool;
+  document.querySelector(".gate").classList.toggle("risky", req.risky);
+  $("gate").hidden = false;
+  $("gate-yes").focus();
 }
 
-function answerOracle(answer) {
-  const next = oracleQueue.shift();
+function answerGate(answer) {
+  const next = gateQueue.shift();
   if (!next) return;
   api.approve(next.id, answer);
-  if (answer === "always") line("note", `${persona(next.req.god).title} may keep ${TOOL_NAMES[next.req.tool] ?? next.req.tool} without asking, for the rest of this session.`);
+  if (answer === "always") line("note", `${persona(next.req.crew).title} may keep ${TOOL_NAMES[next.req.tool] ?? next.req.tool} without asking, for the rest of this session.`);
   if (answer === "no") line("note", `Denied: ${next.req.summary}`);
-  showOracle();
+  showGate();
 }
 
 // ---------- input ----------
@@ -453,17 +454,17 @@ function wire() {
     renderAll();
     line("note", `Now working in ${state.root}`);
   });
-  $("oracle-yes").addEventListener("click", () => answerOracle("yes"));
-  $("oracle-always").addEventListener("click", () => answerOracle("always"));
-  $("oracle-no").addEventListener("click", () => answerOracle("no"));
-  $("ascension").addEventListener("click", () => ($("ascension").hidden = true));
+  $("gate-yes").addEventListener("click", () => answerGate("yes"));
+  $("gate-always").addEventListener("click", () => answerGate("always"));
+  $("gate-no").addEventListener("click", () => answerGate("no"));
+  $("upgrade").addEventListener("click", () => ($("upgrade").hidden = true));
 
   document.addEventListener("keydown", (e) => {
-    if (!$("oracle").hidden) {
+    if (!$("gate").hidden) {
       const k = e.key.toLowerCase();
-      if (k === "y") answerOracle("yes");
-      else if (k === "a") answerOracle("always");
-      else if (k === "n" || k === "escape") answerOracle("no");
+      if (k === "y") answerGate("yes");
+      else if (k === "a") answerGate("always");
+      else if (k === "n" || k === "escape") answerGate("no");
       return;
     }
     if (e.key === "Escape" && busy) api.interrupt();
@@ -479,12 +480,12 @@ async function main() {
   api.onEvent((name, payload) => handlers[name]?.(payload));
   api.onApproval((id, req) => {
     flushLive();
-    oracleQueue.push({ id, req });
-    if (oracleQueue.length === 1) showOracle();
+    gateQueue.push({ id, req });
+    if (gateQueue.length === 1) showGate();
   });
   setInterval(() => {
     tick++;
-    if (live) setWorking(live.god);
+    if (live) setWorking(live.crew);
   }, 80);
   $("prompt").focus();
 }

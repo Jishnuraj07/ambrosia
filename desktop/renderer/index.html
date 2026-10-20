@@ -20,7 +20,7 @@
         <symbol id="i-stop" viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="2" /></symbol>
         <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" /></symbol>
         <symbol id="i-cross" viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17" /></symbol>
-        <symbol id="i-drop" viewBox="0 0 24 24"><path d="M12 3.5s-5.5 6.6-5.5 10.2a5.5 5.5 0 0 0 11 0C17.5 10.1 12 3.5 12 3.5z" /></symbol>
+        <symbol id="i-unlock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9.5" rx="1.5" /><path d="M8.5 11V7.5a3.5 3.5 0 0 1 6.8-1.2" /><path d="M12 14.5v2.5" /></symbol>
       </defs>
     </svg>
 
@@ -33,14 +33,14 @@
       </button>
 
       <div id="rank" class="rank">
-        <span id="rank-name" class="rank-name">Mortal</span>
+        <span id="rank-name" class="rank-name">Script Kiddie</span>
         <div class="xp" aria-hidden="true"><div id="xp-fill" class="xp-fill"></div></div>
         <span id="xp-label" class="xp-label">0</span>
         <span id="xp-float" class="xp-float" aria-live="polite"></span>
       </div>
       <div class="tools">
         <button id="toggle-sound" class="tool-btn" title="Sound"><svg class="ic"><use href="#i-sound" /></svg></button>
-        <button id="toggle-tts" class="tool-btn" title="Hermes reads his lines aloud"><svg class="ic"><use href="#i-voice" /></svg></button>
+        <button id="toggle-tts" class="tool-btn" title="Pirate Radio reads its lines aloud"><svg class="ic"><use href="#i-voice" /></svg></button>
         <button id="toggle-serious" class="tool-btn" title="Serious mode: no game, no narration"><svg class="ic"><use href="#i-focus" /></svg></button>
       </div>
     </header>
@@ -50,8 +50,8 @@
         <div id="transcript" class="transcript" aria-live="polite">
           <div class="empty">
             <img class="empty-mark" src="../icon.svg" alt="" />
-            <p class="empty-title">What shall we forge?</p>
-            <p class="empty-sub">Hephaestus takes the task. Failing tests summon a monster; each fix wounds it.</p>
+            <p class="empty-title">What's the job?</p>
+            <p class="empty-sub">Fabricator takes the job. Failing tests boot up a hostile threat; every fix kills a process.</p>
           </div>
         </div>
 
@@ -69,7 +69,7 @@
             <button id="send" type="submit" class="send" title="Send (Enter)"><svg class="ic"><use href="#i-send" /></svg></button>
           </form>
           <div class="shortcuts">
-            <button type="button" class="shortcut" data-insert="/council ">Council</button>
+            <button type="button" class="shortcut" data-insert="/heist ">Heist</button>
             <button type="button" class="shortcut" data-run="/roast">Roast my diff</button>
             <button type="button" class="shortcut" data-run="/stats">Stats</button>
             <button type="button" class="shortcut" data-run="/clear">Clear memory</button>
@@ -91,8 +91,8 @@
         </section>
 
         <section class="rail-section">
-          <h2>Labours <span id="labour-count" class="count"></span></h2>
-          <ul id="labours" class="labours"></ul>
+          <h2>Hacks <span id="hack-count" class="count"></span></h2>
+          <ul id="hacks" class="hacks"></ul>
         </section>
 
         <section class="rail-section">
@@ -102,23 +102,24 @@
       </aside>
     </main>
 
-    <div id="oracle" class="veil" hidden>
-      <div class="oracle" role="dialog" aria-modal="true" aria-labelledby="oracle-title">
-        <p id="oracle-title" class="oracle-title"></p>
-        <p id="oracle-risk" class="oracle-risk" hidden>This command can delete or overwrite things. Check it carefully.</p>
-        <pre id="oracle-detail" class="oracle-detail"></pre>
-        <div class="oracle-actions">
-          <button id="oracle-no" class="btn">Deny <kbd>N</kbd></button>
-          <button id="oracle-always" class="btn">Always allow <span id="oracle-tool"></span> <kbd>A</kbd></button>
-          <button id="oracle-yes" class="btn primary">Allow <kbd>Y</kbd></button>
+    <div id="gate" class="veil" hidden>
+      <div class="gate" role="dialog" aria-modal="true" aria-labelledby="gate-title">
+        <p id="gate-eyebrow" class="gate-eyebrow">Operator check</p>
+        <p id="gate-title" class="gate-title"></p>
+        <p id="gate-risk" class="gate-risk" hidden>This command can delete or overwrite things. Check it carefully.</p>
+        <pre id="gate-detail" class="gate-detail"></pre>
+        <div class="gate-actions">
+          <button id="gate-no" class="btn">Deny <kbd>N</kbd></button>
+          <button id="gate-always" class="btn">Always allow <span id="gate-tool"></span> <kbd>A</kbd></button>
+          <button id="gate-yes" class="btn primary">Allow <kbd>Y</kbd></button>
         </div>
       </div>
     </div>
 
-    <div id="ascension" class="ascension" hidden>
-      <img class="ascension-mark" src="../icon.svg" alt="" />
-      <p id="ascension-rank" class="ascension-rank"></p>
-      <p class="ascension-sub">New rank</p>
+    <div id="upgrade" class="upgrade" hidden>
+      <img class="upgrade-mark" src="../icon.svg" alt="" />
+      <p id="upgrade-rank" class="upgrade-rank"></p>
+      <p class="upgrade-sub">Upgrade installed</p>
     </div>
 
     <script type="module" src="app.js"></script>

@@ -40,12 +40,12 @@ function fakeClient(script: Msg[]) {
 }
 
 describe("Agent loop", () => {
-  it("runs tools through the Oracle, feeds results back, and emits events", async () => {
+  it("runs tools through the Operator check, feeds results back, and emits events", async () => {
     const { client, requests } = fakeClient([
       {
         stop_reason: "tool_use",
         content: [
-          { type: "text", text: "Firing up the forge." },
+          { type: "text", text: "Powering up the rig." },
           { type: "tool_use", id: "t1", name: "write_file", input: { path: "hello.txt", content: "hi" } },
         ],
       },
@@ -58,7 +58,7 @@ describe("Agent loop", () => {
     }
     const asked: string[] = [];
     const agent = new Agent({
-      god: "hephaestus",
+      crew: "fabricator",
       client,
       config: DEFAULT_CONFIG,
       root,
@@ -95,7 +95,7 @@ describe("Agent loop", () => {
       { stop_reason: "tool_use", content: [{ type: "tool_use", id: "t1", name: "read_file", input: { nope: 1 } }] },
       { stop_reason: "end_turn", content: [{ type: "text", text: "ok" }] },
     ]);
-    const agent = new Agent({ god: "hephaestus", client, config: DEFAULT_CONFIG, root, bus: new Bus(), approve: async () => true });
+    const agent = new Agent({ crew: "fabricator", client, config: DEFAULT_CONFIG, root, bus: new Bus(), approve: async () => true });
     await agent.run("read something");
     expect(requests[1].messages[2].content[0]).toMatchObject({ is_error: true });
   });
@@ -105,7 +105,7 @@ describe("Agent loop", () => {
       { stop_reason: "tool_use", content: [{ type: "tool_use", id: "t1", name: "shell", input: { command: "echo hi" } }] },
       { stop_reason: "end_turn", content: [{ type: "text", text: "understood" }] },
     ]);
-    const agent = new Agent({ god: "hephaestus", client, config: DEFAULT_CONFIG, root, bus: new Bus(), approve: async () => false });
+    const agent = new Agent({ crew: "fabricator", client, config: DEFAULT_CONFIG, root, bus: new Bus(), approve: async () => false });
     await agent.run("run something");
     expect(requests[1].messages[2].content[0].content).toMatch(/declined/);
   });
@@ -115,7 +115,7 @@ describe("Agent loop", () => {
     const bus = new Bus();
     const notices: string[] = [];
     bus.on("notice", (n) => notices.push(n.text));
-    const agent = new Agent({ god: "hephaestus", client, config: DEFAULT_CONFIG, root, bus, approve: async () => true });
+    const agent = new Agent({ crew: "fabricator", client, config: DEFAULT_CONFIG, root, bus, approve: async () => true });
     const r = await agent.run("something");
     expect(r.stopReason).toBe("refusal");
     expect(notices[0]).toMatch(/declined/);
@@ -123,8 +123,8 @@ describe("Agent loop", () => {
 
   it("sends no thinking or fallbacks to Haiku", async () => {
     const { client, requests } = fakeClient([{ stop_reason: "end_turn", content: [{ type: "text", text: "hi" }] }]);
-    const config = { ...DEFAULT_CONFIG, models: { ...DEFAULT_CONFIG.models, momus: "claude-haiku-4-5" } };
-    const agent = new Agent({ god: "momus", client, config, root, bus: new Bus(), approve: async () => true, tools: [] });
+    const config = { ...DEFAULT_CONFIG, models: { ...DEFAULT_CONFIG.models, blackice: "claude-haiku-4-5" } };
+    const agent = new Agent({ crew: "blackice", client, config, root, bus: new Bus(), approve: async () => true, tools: [] });
     await agent.run("roast");
     expect(requests[0].thinking).toBeUndefined();
     expect(requests[0].fallbacks).toBeUndefined();

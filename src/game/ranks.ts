@@ -5,11 +5,11 @@ export interface Rank {
 }
 
 export const RANKS: Rank[] = [
-  { name: "Mortal", min: 0, glyph: "🏺" },
-  { name: "Hero", min: 100, glyph: "🛡" },
-  { name: "Demigod", min: 400, glyph: "⚡" },
-  { name: "Titan", min: 1000, glyph: "⛰" },
-  { name: "Olympian", min: 2500, glyph: "🏛" },
+  { name: "Script Kiddie", min: 0, glyph: "💾" },
+  { name: "Runner", min: 100, glyph: "🕶" },
+  { name: "Netrunner", min: 400, glyph: "⌨" },
+  { name: "Ghost", min: 1000, glyph: "👻" },
+  { name: "Legend", min: 2500, glyph: "🌐" },
 ];
 
 export function rankFor(xp: number): Rank {
@@ -26,13 +26,14 @@ export function progress(xp: number): { rank: Rank; next: Rank | null; fraction:
   return { rank, next, fraction: (xp - rank.min) / (next.min - rank.min) };
 }
 
-export const MONSTERS = [
-  { max: 1, name: "Harpy" },
-  { max: 3, name: "Minotaur" },
-  { max: 6, name: "Chimera" },
-  { max: Infinity, name: "Hydra" },
+/** The threat a failing suite spawns, by how many tests fail. */
+export const THREATS = [
+  { max: 1, name: "Bug" },
+  { max: 3, name: "Daemon" },
+  { max: 6, name: "Worm" },
+  { max: Infinity, name: "Rogue AI" },
 ];
 
-export function monsterFor(hp: number): string {
-  return MONSTERS.find((m) => hp <= m.max)!.name;
+export function threatFor(hp: number): string {
+  return THREATS.find((m) => hp <= m.max)!.name;
 }

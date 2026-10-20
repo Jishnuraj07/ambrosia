@@ -1,29 +1,29 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Box, Static, Text, useApp, useInput } from "ink";
 import TextInput from "ink-text-input";
-import type { GodName } from "../config.js";
-import type { Boss, Labour } from "../events.js";
+import type { CrewName } from "../config.js";
+import type { Boss, Hack } from "../events.js";
 import type { ApprovalRequest } from "../agent/tools.js";
 import type { ApprovalAnswer, Session } from "../session.js";
-import { Banner, BossBar, GodBubble, LabourCard, OraclePrompt, RankUp, StatusBar, ToolLine, Working } from "./components.js";
+import { Banner, BossBar, CrewBubble, HackCard, GatePrompt, RankUp, StatusBar, ToolLine, Working } from "./components.js";
 
 type Entry =
   | { id: number; kind: "banner" }
   | { id: number; kind: "user"; text: string }
-  | { id: number; kind: "god"; god: GodName; text: string }
+  | { id: number; kind: "crew"; crew: CrewName; text: string }
   | { id: number; kind: "tool"; name: string; summary: string; ok: boolean; result: string }
   | { id: number; kind: "notice"; text: string }
   | { id: number; kind: "error"; text: string }
   | { id: number; kind: "narration"; text: string }
   | { id: number; kind: "xp"; amount: number; reason: string }
-  | { id: number; kind: "labour"; labour: Labour }
+  | { id: number; kind: "hack"; hack: Hack }
   | { id: number; kind: "rank"; rank: string }
   | { id: number; kind: "boss"; text: string };
 
 type NewEntry = Entry extends infer E ? (E extends Entry ? Omit<E, "id"> : never) : never;
 
 interface Live {
-  god: GodName;
+  crew: CrewName;
   text: string;
   thinking: string;
 }
@@ -43,20 +43,20 @@ function EntryView({ e }: { e: Entry }) {
     case "user":
       return (
         <Box marginTop={1}>
-          <Text color="#f5c518" bold>
+          <Text color="#ff2bd6" bold>
             ›{" "}
           </Text>
           <Text bold>{e.text}</Text>
         </Box>
       );
-    case "god":
-      return <GodBubble god={e.god} text={e.text} />;
+    case "crew":
+      return <CrewBubble crew={e.crew} text={e.text} />;
     case "tool":
       return <ToolLine name={e.name} summary={e.summary} ok={e.ok} result={e.result} />;
     case "notice":
       return (
         <Box marginTop={1}>
-          <Text color="#c9a0dc">{e.text}</Text>
+          <Text color="#7fdcff">{e.text}</Text>
         </Box>
       );
     case "error":
@@ -67,19 +67,19 @@ function EntryView({ e }: { e: Entry }) {
       );
     case "narration":
       return (
-        <Text color="#7bed9f" italic>
-          🪽 Hermes: {e.text}
+        <Text color="#c6ff3d" italic>
+          📡 Radio: {e.text}
         </Text>
       );
     case "xp":
       return (
-        <Text color={e.amount > 0 ? "#f5c518" : "red"}>
-          {"  "}⚱ {e.amount > 0 ? "+" : ""}
-          {e.amount} ambrosia <Text color="gray">· {e.reason}</Text>
+        <Text color={e.amount > 0 ? "#c6ff3d" : "red"}>
+          {"  "}◆ {e.amount > 0 ? "+" : ""}
+          {e.amount} cred <Text color="gray">· {e.reason}</Text>
         </Text>
       );
-    case "labour":
-      return <LabourCard labour={e.labour} />;
+    case "hack":
+      return <HackCard hack={e.hack} />;
     case "rank":
       return <RankUp rank={e.rank} />;
     case "boss":
@@ -113,7 +113,7 @@ export function App({ session, initialPrompt }: { session: Session; initialPromp
   /** Move streamed text into the permanent transcript. */
   const flushLive = () => {
     const l = liveRef.current;
-    if (l && l.text.trim()) add({ kind: "god", god: l.god, text: l.text });
+    if (l && l.text.trim()) add({ kind: "crew", crew: l.crew, text: l.text });
     if (l) {
       l.text = "";
       l.thinking = "";
@@ -124,8 +124,8 @@ export function App({ session, initialPrompt }: { session: Session; initialPromp
   useEffect(() => {
     const b = session.bus;
     const offs = [
-      b.on("turn_start", ({ god }) => {
-        liveRef.current = { god, text: "", thinking: "" };
+      b.on("turn_start", ({ crew }) => {
+        liveRef.current = { crew, text: "", thinking: "" };
         setLive({ ...liveRef.current });
       }),
       b.on("text", ({ delta }) => {
@@ -164,20 +164,20 @@ export function App({ session, initialPrompt }: { session: Session; initialPromp
         setXp(total);
         add({ kind: "xp", amount, reason });
       }),
-      b.on("labour", (labour) => add({ kind: "labour", labour })),
+      b.on("hack", (hack) => add({ kind: "hack", hack })),
       b.on("rank_up", ({ rank }) => add({ kind: "rank", rank })),
       b.on("boss", ({ boss: bs, change }) => {
         setBoss(change === "defeated" ? null : bs);
         if (!bs) return;
         const text =
           change === "spawn"
-            ? `🐉 A ${bs.name} appears! ${bs.hp} failing test${bs.hp > 1 ? "s" : ""}.`
+            ? `☣ A ${bs.name} appears! ${bs.hp} failing test${bs.hp > 1 ? "s" : ""}.`
             : change === "grow"
-              ? `🐍 It grows new heads! The ${bs.name} now has ${bs.hp}.`
+              ? `🧬 It replicates! The ${bs.name} now runs ${bs.hp}.`
               : change === "hit"
-                ? `⚔ Hit! The ${bs.name} is down to ${bs.hp}.`
+                ? `⚡ Hit! The ${bs.name} is down to ${bs.hp}.`
                 : change === "defeated"
-                  ? `🏛 The ${bs.name} is slain! All tests pass.`
+                  ? `✔ The ${bs.name} is purged! All tests pass.`
                   : "";
         if (text) add({ kind: "boss", text });
       }),
@@ -228,7 +228,7 @@ export function App({ session, initialPrompt }: { session: Session; initialPromp
       if (!answer) return;
       add({
         kind: "notice",
-        text: answer === "no" ? "🔮 The Oracle forbids it." : answer === "always" ? `🔮 The Oracle allows ${approval.req.tool} for this session.` : "🔮 The Oracle allows it.",
+        text: answer === "no" ? "⌬ Operator blocked it." : answer === "always" ? `⌬ Operator allows ${approval.req.tool} for this session.` : "⌬ Operator allows it.",
       });
       approval.resolve(answer);
       setApproval(null);
@@ -241,24 +241,24 @@ export function App({ session, initialPrompt }: { session: Session; initialPromp
     <Box flexDirection="column">
       <Static items={entries}>{(e) => (e.kind === "banner" ? <Banner key={e.id} serious={session.serious} /> : <EntryView key={e.id} e={e} />)}</Static>
 
-      {live?.text.trim() ? <GodBubble god={live.god} text={live.text} /> : null}
+      {live?.text.trim() ? <CrewBubble crew={live.crew} text={live.text} /> : null}
       {running.map((t) => (
         <ToolLine key={t.id} name={t.name} summary={t.summary} />
       ))}
-      {approval ? <OraclePrompt req={approval.req} /> : null}
-      {live && !approval && running.length === 0 ? <Working god={live.god} tick={tick} thinking={live.thinking} /> : null}
+      {approval ? <GatePrompt req={approval.req} /> : null}
+      {live && !approval && running.length === 0 ? <Working crew={live.crew} tick={tick} thinking={live.thinking} /> : null}
 
       <Box flexDirection="column" marginTop={1}>
         {boss && !mode.serious ? <BossBar boss={boss} /> : null}
         <StatusBar xp={xp} serious={mode.serious} sound={mode.sound} tts={mode.tts} />
         {busy ? (
-          <Text color="gray">{approval ? "Answer the Oracle above." : "The gods are at work. Esc to interrupt."}</Text>
+          <Text color="gray">{approval ? "Answer the Operator check above." : "The crew is on the job. Esc to interrupt."}</Text>
         ) : (
           <Box>
-            <Text color="#f5c518" bold>
+            <Text color="#ff2bd6" bold>
               ›{" "}
             </Text>
-            <TextInput value={input} onChange={setInput} onSubmit={(v) => void submit(v)} placeholder="What shall we forge?" />
+            <TextInput value={input} onChange={setInput} onSubmit={(v) => void submit(v)} placeholder="What's the job?" />
           </Box>
         )}
       </Box>

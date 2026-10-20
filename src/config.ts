@@ -2,16 +2,16 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-export type GodName = "hephaestus" | "athena" | "momus" | "hermes";
+export type CrewName = "fabricator" | "strategos" | "blackice" | "radio";
 export type Effort = "low" | "medium" | "high" | "xhigh" | "max";
 
 export interface Config {
-  models: Record<GodName, string>;
-  effort: Record<GodName, Effort>;
+  models: Record<CrewName, string>;
+  effort: Record<CrewName, Effort>;
   sound: boolean;
   tts: boolean;
   narrator: boolean;
-  /** Tools that never ask the Oracle. Read-only tools are always allowed. */
+  /** Tools that never ask the Operator. Read-only tools are always allowed. */
   autoApprove: string[];
   /** For API keys not scoped to a workspace. ANTHROPIC_WORKSPACE_ID overrides it. */
   workspaceId?: string;
@@ -19,12 +19,12 @@ export interface Config {
 
 export const DEFAULT_CONFIG: Config = {
   models: {
-    hephaestus: "claude-opus-5-5",
-    athena: "claude-opus-5-5",
-    momus: "claude-sonnet-5-5",
-    hermes: "claude-haiku-4-5",
+    fabricator: "claude-opus-5-5",
+    strategos: "claude-opus-5-5",
+    blackice: "claude-sonnet-5-5",
+    radio: "claude-haiku-4-5",
   },
-  effort: { hephaestus: "high", athena: "high", momus: "low", hermes: "low" },
+  effort: { fabricator: "high", strategos: "high", blackice: "low", radio: "low" },
   sound: true,
   tts: false,
   narrator: true,
@@ -34,6 +34,19 @@ export const DEFAULT_CONFIG: Config = {
 /** Where config and profile live. AMBROSIA_HOME overrides it (used by tests). */
 export function ambrosiaHome(): string {
   return process.env.AMBROSIA_HOME ?? path.join(os.homedir(), ".ambrosia");
+}
+
+/** Keys from the Greek-themed releases, so an existing config.json keeps its choices. */
+const LEGACY_CREW: Record<string, CrewName> = { hephaestus: "fabricator", athena: "strategos", momus: "blackice", hermes: "radio" };
+
+function migrateCrew<T>(byName: Record<string, T> | undefined): Partial<Record<CrewName, T>> {
+  const out: Partial<Record<CrewName, T>> = {};
+  for (const [name, value] of Object.entries(byName ?? {})) {
+    // A current key beats the legacy one it replaced, whichever comes first.
+    if (LEGACY_CREW[name]) out[LEGACY_CREW[name]] ??= value;
+    else out[name as CrewName] = value;
+  }
+  return out;
 }
 
 export function loadConfig(): Config {
@@ -53,7 +66,7 @@ export function loadConfig(): Config {
   return {
     ...DEFAULT_CONFIG,
     ...user,
-    models: { ...DEFAULT_CONFIG.models, ...user.models },
-    effort: { ...DEFAULT_CONFIG.effort, ...user.effort },
+    models: { ...DEFAULT_CONFIG.models, ...migrateCrew(user.models) },
+    effort: { ...DEFAULT_CONFIG.effort, ...migrateCrew(user.effort) },
   };
 }

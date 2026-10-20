@@ -37,7 +37,7 @@ const RISKY = [
   /\bInvoke-Expression\b|\biex\b/i,
 ];
 
-/** Commands the Oracle warns about. Approving one that then fails earns the Icarus labour. */
+/** Commands the Operator is warned about. Approving one that then fails earns the Bricked hack. */
 export function isRisky(command: string): boolean {
   return RISKY.some((re) => re.test(command));
 }

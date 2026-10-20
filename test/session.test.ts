@@ -19,7 +19,7 @@ function make(opts: { yolo?: boolean; serious?: boolean } = {}) {
   return { session, notices };
 }
 
-const req = (tool: string): ApprovalRequest => ({ god: "hephaestus", tool, summary: "x", detail: "x", risky: false });
+const req = (tool: string): ApprovalRequest => ({ crew: "fabricator", tool, summary: "x", detail: "x", risky: false });
 const approve = (s: unknown, r: ApprovalRequest) => (s as { approve(r: ApprovalRequest): Promise<boolean> }).approve(r);
 
 beforeEach(() => {
@@ -33,13 +33,13 @@ describe("Session commands", () => {
     expect(await session.submit("/exit")).toBe("quit");
   });
 
-  it("/help, /stats and /labours print to the transcript", async () => {
+  it("/help, /stats and /hacks print to the transcript", async () => {
     const { session, notices } = make();
     await session.submit("/help");
     await session.submit("/stats");
-    await session.submit("/labours");
-    expect(notices[0]).toContain("/council <task>");
-    expect(notices[1]).toMatch(/^🏺 Mortal · 0 ambrosia \(100 to Hero\)/);
+    await session.submit("/hacks");
+    expect(notices[0]).toContain("/heist <task>");
+    expect(notices[1]).toMatch(/^💾 Script Kiddie · 0 cred \(100 to Runner\)/);
     expect(notices[2].split("\n")).toHaveLength(11);
   });
 
@@ -63,8 +63,9 @@ describe("Session commands", () => {
   it("rejects unknown commands and usage errors", async () => {
     const { session, notices } = make();
     await session.submit("/teleport");
+    await session.submit("/heist");
     await session.submit("/council");
-    expect(notices).toEqual(["Unknown command /teleport. Try /help.", "Usage: /council <task>"]);
+    expect(notices).toEqual(["Unknown command /teleport. Try /help.", "Usage: /heist <task>", "Usage: /council <task>"]);
   });
 
   it("ignores blank input", async () => {

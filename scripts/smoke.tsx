@@ -1,6 +1,6 @@
 /**
  * End-to-end smoke test: renders the real UI against a scratch project.
- * Hephaestus finds a failing test, fixes the bug and reruns; then Momus roasts
+ * Fabricator finds a failing test, fixes the bug and reruns; then Black ICE roasts
  * the diff. By default the models are scripted stand-ins, so no API key is
  * needed. With --live it uses the real models (and costs a little).
  *
@@ -60,7 +60,7 @@ const type = async (text: string) => {
 const waitIdle = async () => {
   await sleep(300);
   for (let i = 0; i < (live ? 3000 : 200) && session.busy; i++) {
-    stdin.write("y"); // answer any Oracle prompt
+    stdin.write("y"); // answer any Operator check
     await sleep(100);
   }
   await sleep(1500); // let the narrator's debounce fire
@@ -82,13 +82,13 @@ console.log(frames[frames.length - 1]);
 
 const checks: Array<[string, boolean]> = [
   ["bug fixed on disk", fs.readFileSync(path.join(project, "math.mjs"), "utf8").includes("a + b")],
-  ["oracle prompted", plain.includes("The Oracle asks")],
-  ["monster spawned", /A (Harpy|Minotaur|Chimera|Hydra) appears/.test(plain)],
-  ["monster slain", plain.includes("is slain")],
+  ["gate prompted", plain.includes("Operator check")],
+  ["threat spawned", /A (Bug|Daemon|Worm|Rogue AI) appears/.test(plain)],
+  ["threat purged", plain.includes("is purged")],
   ["First Blood earned", plain.includes("First Blood")],
-  ...(live ? [] : [["Golden Fleece earned", plain.includes("Golden Fleece")] as [string, boolean]]),
+  ...(live ? [] : [["Cracked the ICE earned", plain.includes("Cracked the ICE")] as [string, boolean]]),
   ["no errors", errors.length === 0],
-  ["Hermes narrated", plain.includes("Hermes:")],
+  ["Pirate Radio narrated", plain.includes("Radio:")],
   ["profile saved", fs.existsSync(path.join(process.env.AMBROSIA_HOME!, "profile.json"))],
 ];
 if (errors.length) console.log("Errors:\n" + errors.join("\n"));

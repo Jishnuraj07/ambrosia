@@ -8,20 +8,20 @@ function setup(now = new Date("2026-10-18T14:00:00")) {
   const bus = new Bus();
   const engine = new GameEngine(bus, emptyProfile(), { persist: false, now: () => now });
   const seen: Array<{ name: string; payload: unknown }> = [];
-  for (const name of ["xp", "labour", "boss", "rank_up"] as const) {
+  for (const name of ["xp", "hack", "boss", "rank_up"] as const) {
     bus.on(name, (payload) => seen.push({ name, payload }));
   }
   const tests = (failed: number, passed: number, failing: string[] = []) =>
     bus.emit("test_result", { failed, passed, failing, parsed: true });
-  const labours = () => seen.filter((s) => s.name === "labour").map((s) => (s.payload as EventMap["labour"]).id);
-  return { bus, engine, seen, tests, labours };
+  const hacks = () => seen.filter((s) => s.name === "hack").map((s) => (s.payload as EventMap["hack"]).id);
+  return { bus, engine, seen, tests, hacks };
 }
 
 describe("ranks", () => {
   it("maps xp to ranks and progress", () => {
-    expect(rankFor(0).name).toBe("Mortal");
-    expect(rankFor(100).name).toBe("Hero");
-    expect(rankFor(99_999).name).toBe("Olympian");
+    expect(rankFor(0).name).toBe("Script Kiddie");
+    expect(rankFor(100).name).toBe("Runner");
+    expect(rankFor(99_999).name).toBe("Legend");
     expect(progress(250).fraction).toBeCloseTo(0.5);
     expect(progress(5000).next).toBeNull();
   });
@@ -29,28 +29,28 @@ describe("ranks", () => {
 
 describe("GameEngine boss fights", () => {
   it("spawns, takes hits and falls", () => {
-    const { engine, tests, labours } = setup();
+    const { engine, tests, hacks } = setup();
     tests(3, 5, ["a", "b", "c"]);
-    expect(engine.boss).toMatchObject({ name: "Minotaur", hp: 3, maxHp: 3 });
+    expect(engine.boss).toMatchObject({ name: "Daemon", hp: 3, maxHp: 3 });
 
     tests(1, 7, ["c"]);
     expect(engine.boss?.hp).toBe(1);
-    expect(labours()).toContain("first_blood");
+    expect(hacks()).toContain("first_blood");
 
     tests(0, 8);
     expect(engine.boss).toBeNull();
-    expect(labours()).toContain("boss_slayer");
-    expect(labours()).not.toContain("hydra_slayer");
+    expect(hacks()).toContain("daemon_killer");
+    expect(hacks()).not.toContain("fork_bomb");
     expect(engine.profile.stats.testsFixed).toBe(3);
   });
 
-  it("awards Hydra Slayer when the monster grew three heads", () => {
-    const { engine, tests, labours } = setup();
+  it("awards Fork Bomb Survivor when the threat spawned three new failures", () => {
+    const { engine, tests, hacks } = setup();
     tests(1, 0, ["a"]);
     tests(4, 0, ["a", "b", "c", "d"]);
-    expect(engine.boss).toMatchObject({ name: "Chimera", hp: 4, maxHp: 4 });
+    expect(engine.boss).toMatchObject({ name: "Worm", hp: 4, maxHp: 4 });
     tests(0, 4);
-    expect(labours()).toContain("hydra_slayer");
+    expect(hacks()).toContain("fork_bomb");
   });
 
   it("charges for regressions of tests fixed this session", () => {
@@ -63,30 +63,30 @@ describe("GameEngine boss fights", () => {
     expect(seen.some((s) => s.name === "xp" && (s.payload as EventMap["xp"]).reason === "regression")).toBe(true);
   });
 
-  it("awards Sisyphus after five failing runs of one test", () => {
-    const { tests, labours } = setup();
+  it("awards Infinite Loop after five failing runs of one test", () => {
+    const { tests, hacks } = setup();
     for (let i = 0; i < 5; i++) tests(1, 0, ["stubborn"]);
-    expect(labours()).toContain("sisyphus");
+    expect(hacks()).toContain("infinite_loop");
   });
 });
 
-describe("GameEngine other labours", () => {
-  it("awards Icarus for an approved risky command that fails", () => {
-    const { bus, labours } = setup();
-    bus.emit("shell_result", { god: "hephaestus", command: "rm -rf x", exitCode: 1, risky: true, approved: true });
-    expect(labours()).toEqual(["icarus"]);
+describe("GameEngine other hacks", () => {
+  it("awards Bricked for an approved risky command that fails", () => {
+    const { bus, hacks } = setup();
+    bus.emit("shell_result", { crew: "fabricator", command: "rm -rf x", exitCode: 1, risky: true, approved: true });
+    expect(hacks()).toEqual(["bricked"]);
   });
 
-  it("awards Pandora after three denials", () => {
-    const { bus, labours } = setup();
-    for (let i = 0; i < 3; i++) bus.emit("approval", { god: "hephaestus", tool: "shell", summary: "x", approved: false, risky: false });
-    expect(labours()).toEqual(["pandora"]);
+  it("awards Firewall after three denials", () => {
+    const { bus, hacks } = setup();
+    for (let i = 0; i < 3; i++) bus.emit("approval", { crew: "fabricator", tool: "shell", summary: "x", approved: false, risky: false });
+    expect(hacks()).toEqual(["firewall"]);
   });
 
-  it("awards each labour only once and ranks up", () => {
-    const { bus, engine, seen, labours } = setup();
+  it("awards each hack only once and ranks up", () => {
+    const { bus, engine, seen, hacks } = setup();
     for (let i = 0; i < 3; i++) bus.emit("review", { approved: true });
-    expect(labours()).toEqual(["golden_fleece"]);
+    expect(hacks()).toEqual(["cracked_ice"]);
     expect(engine.profile.xp).toBe(3 * XP.review + 50);
     expect(seen.some((s) => s.name === "rank_up")).toBe(true);
   });
@@ -95,16 +95,16 @@ describe("GameEngine other labours", () => {
     const { engine, tests, seen } = setup();
     engine.enabled = false;
     tests(3, 0, ["a"]);
-    engine.award("night_owl");
+    engine.award("night_shift");
     expect(seen).toEqual([]);
     expect(engine.boss).toBeNull();
   });
 
   it("counts day streaks and night sessions", () => {
-    const { engine, labours } = setup(new Date("2026-10-18T02:30:00"));
+    const { engine, hacks } = setup(new Date("2026-10-18T02:30:00"));
     engine.profile.days = ["2026-10-16", "2026-10-17"];
     engine.startSession();
-    expect(labours()).toEqual(expect.arrayContaining(["night_owl", "apollo"]));
+    expect(hacks()).toEqual(expect.arrayContaining(["night_shift", "uptime"]));
     expect(streak(["2026-10-10", "2026-10-12", "2026-10-13"])).toBe(2);
   });
 });

@@ -1,21 +1,31 @@
-/* Ambrosia: "Ichor". A quiet indigo night; gold only where something matters. */
+/* Ambrosia: "Netrunner". Night-city violet black; magenta for action, acid for reward, cyan for signal. */
 
 :root {
-  --night: #171927;
-  --surface: #1f2233;
-  --raised: #262a3e;
-  --hair: #2b2f45;
-  --text: #e7e5ee;
-  --muted: #8a8da6;
-  --faint: #5d6079;
-  --ichor: #e2b34a;
-  --ichor-soft: rgba(226, 179, 74, 0.12);
-  --wound: #e5604f;
-  --ok: #7cc79a;
+  --night: #0b0614;
+  --surface: #150d24;
+  --raised: #1c1130;
+  --hair: #2c1d47;
+  --hair-hot: #4a2d72;
+  --text: #ece6ff;
+  --muted: #9b90c2;
+  --faint: #625882;
+  --neon: #ff2bd6;
+  --neon-soft: rgba(255, 43, 214, 0.12);
+  --acid: #c6ff3d;
+  --acid-soft: rgba(198, 255, 61, 0.1);
+  --cyan: #29e7ff;
+  --wound: #ff4d6d;
+  --wound-soft: rgba(255, 77, 109, 0.1);
+  --ok: #3dffa8;
+  --on-neon: #1a0216;
 
   --text-face: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
-  --display-face: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
-  --mono-face: "Cascadia Mono", "Cascadia Code", Consolas, monospace;
+  --display-face: "Bahnschrift", "DIN Alternate", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  --mono-face: "Cascadia Code", "Cascadia Mono", "JetBrains Mono", Consolas, monospace;
+
+  /* A cut corner: the one shape everything with an edge shares. */
+  --cut: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+  --cut-sm: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
 
   --bar: 52px;
   --rail: 272px;
@@ -30,10 +40,29 @@ body {
   margin: 0;
   height: 100%;
   overflow: hidden;
-  background: var(--night);
+  background:
+    radial-gradient(1200px 500px at 70% -10%, rgba(255, 43, 214, 0.1), transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, rgba(41, 231, 255, 0.07), transparent 60%),
+    linear-gradient(rgba(124, 92, 190, 0.06) 1px, transparent 1px) 0 0 / 32px 32px,
+    linear-gradient(90deg, rgba(124, 92, 190, 0.06) 1px, transparent 1px) 0 0 / 32px 32px,
+    var(--night);
   color: var(--text);
   font: 14px/1.55 var(--text-face);
   -webkit-font-smoothing: antialiased;
+}
+
+/* Faint scanlines over everything. Decorative only; never intercepts a click. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  pointer-events: none;
+  background: repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0.12) 0 1px, transparent 1px 3px);
+}
+
+::selection {
+  background: rgba(255, 43, 214, 0.35);
 }
 
 button {
@@ -46,7 +75,7 @@ button {
 
 button:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid var(--ichor);
+  outline: 2px solid var(--neon);
   outline-offset: 2px;
 }
 
@@ -80,6 +109,8 @@ kbd {
   gap: 10px;
   padding: 0 16px;
   border-bottom: 1px solid var(--hair);
+  background: rgba(11, 6, 20, 0.72);
+  box-shadow: 0 1px 0 rgba(255, 43, 214, 0.18);
 }
 
 .mark {
@@ -89,15 +120,18 @@ kbd {
 
 .wordmark {
   font: 600 15px var(--display-face);
-  letter-spacing: 0.01em;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  text-shadow: 0 0 12px rgba(255, 43, 214, 0.55);
 }
 
 .demo {
-  font-size: 11.5px;
-  color: var(--ichor);
-  background: var(--ichor-soft);
-  padding: 1px 8px;
-  border-radius: 6px;
+  font: 600 10.5px var(--mono-face);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--acid);
+  border: 1px solid rgba(198, 255, 61, 0.4);
+  padding: 1px 7px;
 }
 
 .project {
@@ -122,6 +156,7 @@ kbd {
 }
 
 #project-path {
+  font-family: var(--mono-face);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -139,28 +174,31 @@ kbd {
 }
 
 .rank-name {
-  font: 600 13.5px var(--display-face);
-  color: var(--ichor);
+  font: 600 13px var(--display-face);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--neon);
+  text-shadow: 0 0 10px rgba(255, 43, 214, 0.5);
 }
 
 .xp {
   width: 140px;
-  height: 3px;
-  border-radius: 2px;
-  background: var(--hair);
+  height: 4px;
+  background: repeating-linear-gradient(90deg, var(--hair) 0 6px, transparent 6px 8px);
   overflow: hidden;
 }
 
 .xp-fill {
   height: 100%;
   width: 0;
-  background: var(--ichor);
+  background: linear-gradient(90deg, var(--neon), var(--cyan));
+  box-shadow: 0 0 8px rgba(41, 231, 255, 0.6);
   transition: width 0.9s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .xp-label {
   font: 12.5px var(--mono-face);
-  color: var(--muted);
+  color: var(--acid);
   min-width: 3ch;
 }
 
@@ -169,7 +207,7 @@ kbd {
   right: 0;
   top: 22px;
   font: 600 12px var(--mono-face);
-  color: var(--ichor);
+  color: var(--acid);
   pointer-events: none;
 }
 
@@ -213,7 +251,8 @@ kbd {
 }
 
 .tool-btn.on {
-  color: var(--ichor);
+  color: var(--cyan);
+  filter: drop-shadow(0 0 5px rgba(41, 231, 255, 0.7));
 }
 
 /* ---------- frame ---------- */
@@ -252,14 +291,16 @@ kbd {
 }
 
 .empty-mark {
-  width: 56px;
-  height: 56px;
-  opacity: 0.9;
+  width: 64px;
+  height: 64px;
+  filter: drop-shadow(0 0 18px rgba(255, 43, 214, 0.45));
 }
 
 .empty-title {
-  margin: 16px 0 6px;
-  font: 600 22px var(--display-face);
+  margin: 18px 0 6px;
+  font: 600 24px var(--display-face);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .empty-sub {
@@ -279,14 +320,23 @@ kbd {
   align-items: center;
   gap: 8px;
   margin-bottom: 4px;
-  font: 600 13px var(--display-face);
+  font: 600 12px var(--display-face);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--crew, var(--neon));
 }
 
 .dot {
   width: 7px;
   height: 7px;
-  border-radius: 50%;
-  background: var(--god, var(--ichor));
+  transform: rotate(45deg);
+  background: var(--crew, var(--neon));
+  box-shadow: 0 0 8px var(--crew, var(--neon));
+}
+
+.msg {
+  padding-left: 14px;
+  border-left: 1px solid color-mix(in srgb, var(--crew, var(--neon)) 40%, transparent);
 }
 
 .you {
@@ -298,9 +348,10 @@ kbd {
 .you p {
   margin: 0;
   max-width: 78%;
-  padding: 8px 13px;
-  border-radius: 12px;
+  padding: 8px 14px;
   background: var(--surface);
+  border: 1px solid var(--hair-hot);
+  clip-path: var(--cut-sm);
   white-space: pre-wrap;
 }
 
@@ -318,20 +369,23 @@ kbd {
 
 .md code {
   font: 12.5px var(--mono-face);
+  color: var(--cyan);
   background: var(--surface);
   padding: 1px 5px;
-  border-radius: 4px;
+  border-radius: 2px;
 }
 
 .md pre {
   margin: 10px 0;
   padding: 12px 14px;
-  border-radius: 8px;
-  background: var(--surface);
+  background: rgba(5, 2, 10, 0.7);
+  border: 1px solid var(--hair);
+  border-left: 2px solid var(--cyan);
   overflow-x: auto;
 }
 
 .md pre code {
+  color: var(--text);
   background: none;
   padding: 0;
 }
@@ -344,6 +398,7 @@ kbd {
 
 .md h3 {
   font: 600 14px var(--display-face);
+  letter-spacing: 0.04em;
   margin: 14px 0 6px;
 }
 
@@ -374,7 +429,7 @@ kbd {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  border: 1.5px solid var(--muted);
+  border: 1.5px solid var(--cyan);
   border-right-color: transparent;
   animation: spin 0.9s linear infinite;
 }
@@ -393,6 +448,7 @@ kbd {
 
 .step-arg {
   font: 12.5px var(--mono-face);
+  color: var(--faint);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -420,8 +476,9 @@ kbd {
 
 .note.block {
   padding: 12px 14px;
-  border-radius: 8px;
   background: var(--surface);
+  border: 1px solid var(--hair);
+  clip-path: var(--cut);
   font: 12.5px/1.6 var(--mono-face);
   color: var(--text);
 }
@@ -429,24 +486,25 @@ kbd {
 .fail {
   margin: 14px auto;
   padding: 10px 14px;
-  border-radius: 8px;
   border-left: 2px solid var(--wound);
-  background: rgba(229, 96, 79, 0.07);
-  color: #f2b8b0;
+  background: var(--wound-soft);
+  color: #ffb3c1;
   word-break: break-word;
 }
 
-.hermes {
+.radio {
   margin: 10px auto;
   font-size: 13px;
   font-style: italic;
   color: var(--muted);
 }
 
-.hermes b {
-  font-style: normal;
-  font-weight: 600;
-  color: #9fd8b3;
+.radio b {
+  font: normal 600 11px var(--mono-face);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--acid);
+  margin-right: 4px;
 }
 
 .event {
@@ -454,7 +512,7 @@ kbd {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font: 12.5px var(--mono-face);
 }
 
 .event.foe {
@@ -462,13 +520,13 @@ kbd {
 }
 
 .event.won {
-  color: var(--ichor);
+  color: var(--ok);
 }
 
 .event .gain {
   margin-left: auto;
   font: 12.5px var(--mono-face);
-  color: var(--ichor);
+  color: var(--acid);
 }
 
 .event .gain.loss {
@@ -480,30 +538,34 @@ kbd {
   height: 16px;
 }
 
-.labour-line {
+.hack-line {
   margin: 14px auto;
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 10px 14px;
-  border-radius: 10px;
-  background: var(--ichor-soft);
+  background: var(--acid-soft);
+  border: 1px solid rgba(198, 255, 61, 0.35);
+  clip-path: var(--cut);
   color: var(--text);
 }
 
-.labour-line .ic {
-  color: var(--ichor);
+.hack-line .ic {
+  color: var(--acid);
   width: 20px;
   height: 20px;
+  filter: drop-shadow(0 0 6px rgba(198, 255, 61, 0.6));
 }
 
-.labour-line strong {
-  font-weight: 600;
-  color: var(--ichor);
+.hack-line strong {
+  font: 600 13px var(--display-face);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--acid);
   margin-right: 10px;
 }
 
-.labour-desc {
+.hack-desc {
   color: var(--muted);
 }
 
@@ -511,25 +573,26 @@ kbd {
   display: inline-block;
   margin-top: 10px;
   padding: 2px 9px;
-  border-radius: 6px;
-  font-size: 12.5px;
-  font-weight: 600;
+  font: 600 11px var(--mono-face);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border: 1px solid currentColor;
 }
 
 .verdict.approved {
   color: var(--ok);
-  background: rgba(124, 199, 154, 0.12);
+  background: rgba(61, 255, 168, 0.08);
 }
 
 .verdict.revise {
   color: var(--wound);
-  background: rgba(229, 96, 79, 0.12);
+  background: var(--wound-soft);
 }
 
-.labour-line .gain {
+.hack-line .gain {
   margin-left: auto;
   font: 12.5px var(--mono-face);
-  color: var(--ichor);
+  color: var(--acid);
 }
 
 /* ---------- composer ---------- */
@@ -558,7 +621,8 @@ kbd {
 .working-bar {
   height: 100%;
   width: 30%;
-  background: var(--god, var(--ichor));
+  background: var(--crew, var(--neon));
+  box-shadow: 0 0 10px var(--crew, var(--neon));
   animation: sweep 1.4s ease-in-out infinite;
 }
 
@@ -580,6 +644,8 @@ kbd {
 }
 
 .working-text {
+  font: 12.5px var(--mono-face);
+  color: var(--crew, var(--text));
   white-space: nowrap;
 }
 
@@ -617,13 +683,14 @@ kbd {
   align-items: flex-end;
   gap: 8px;
   padding: 8px 8px 8px 14px;
-  border-radius: 14px;
-  background: var(--surface);
-  border: 1px solid var(--hair);
+  background: rgba(21, 13, 36, 0.92);
+  border: 1px solid var(--hair-hot);
+  clip-path: var(--cut);
 }
 
 .field:focus-within {
-  border-color: #474c6c;
+  border-color: var(--neon);
+  box-shadow: inset 0 0 0 1px rgba(255, 43, 214, 0.25);
 }
 
 textarea {
@@ -647,9 +714,10 @@ textarea::placeholder {
   height: 34px;
   display: grid;
   place-items: center;
-  border-radius: 10px;
-  background: var(--ichor);
-  color: #1d1606;
+  background: var(--neon);
+  color: var(--on-neon);
+  clip-path: var(--cut-sm);
+  box-shadow: 0 0 14px rgba(255, 43, 214, 0.6);
 }
 
 .send .ic {
@@ -664,8 +732,9 @@ textarea::placeholder {
 
 .shortcut {
   padding: 3px 8px;
-  border-radius: 6px;
-  font-size: 12.5px;
+  font: 11.5px var(--mono-face);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   color: var(--faint);
 }
 
@@ -687,6 +756,7 @@ textarea:disabled {
   overflow-y: auto;
   padding: 20px 20px 24px;
   border-left: 1px solid var(--hair);
+  background: rgba(11, 6, 20, 0.55);
 }
 
 .arena {
@@ -709,10 +779,12 @@ textarea:disabled {
 
 .ring-track {
   stroke: var(--hair);
+  stroke-dasharray: 3 5;
 }
 
 .ring-hp {
-  stroke: var(--ichor);
+  stroke: var(--cyan);
+  filter: drop-shadow(0 0 6px rgba(41, 231, 255, 0.6));
   stroke-linecap: round;
   stroke-dasharray: 527.8;
   stroke-dashoffset: 0;
@@ -732,7 +804,9 @@ textarea:disabled {
 }
 
 .foe-name {
-  font: 600 19px var(--display-face);
+  font: 600 18px var(--display-face);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .arena.fighting .foe-name {
@@ -740,15 +814,15 @@ textarea:disabled {
 }
 
 .arena.won .foe-name {
-  color: var(--ichor);
+  color: var(--ok);
 }
 
 .foe-hp {
-  font-size: 12.5px;
+  font: 11.5px var(--mono-face);
   color: var(--muted);
 }
 
-/* The one loud moment: a hit flashes the ring; a new head makes it lurch. */
+/* The one loud moment: a hit glitches the ring; a respawn makes it lurch. */
 .arena.hit .ring {
   animation: flinch 0.45s ease-out;
 }
@@ -758,9 +832,12 @@ textarea:disabled {
 }
 
 @keyframes flinch {
-  30% {
-    transform: rotate(-90deg) scale(0.94);
-    filter: drop-shadow(0 0 10px var(--wound));
+  20% {
+    transform: rotate(-90deg) scale(0.94) translateX(3px);
+    filter: drop-shadow(0 0 10px var(--wound)) hue-rotate(40deg);
+  }
+  40% {
+    transform: rotate(-90deg) scale(0.97) translateX(-2px);
   }
 }
 
@@ -777,7 +854,7 @@ textarea:disabled {
 
 @keyframes crown {
   30% {
-    filter: drop-shadow(0 0 16px var(--ichor));
+    filter: drop-shadow(0 0 16px var(--ok));
   }
 }
 
@@ -787,8 +864,12 @@ textarea:disabled {
 
 .rail-section h2 {
   margin: 0 0 10px;
-  font: 600 13px var(--display-face);
-  color: var(--text);
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--hair);
+  font: 600 11.5px var(--display-face);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--cyan);
 }
 
 .count {
@@ -797,13 +878,13 @@ textarea:disabled {
   margin-left: 4px;
 }
 
-.labours {
+.hacks {
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-.labours li {
+.hacks li {
   display: flex;
   align-items: center;
   gap: 9px;
@@ -812,25 +893,26 @@ textarea:disabled {
   color: var(--faint);
 }
 
-.labours .pip {
+.hacks .pip {
   width: 8px;
   height: 8px;
-  border-radius: 50%;
+  transform: rotate(45deg);
   border: 1.5px solid var(--faint);
   flex: none;
 }
 
-.labours li.earned {
+.hacks li.earned {
   color: var(--text);
 }
 
-.labours li.earned .pip {
-  background: var(--ichor);
-  border-color: var(--ichor);
+.hacks li.earned .pip {
+  background: var(--acid);
+  border-color: var(--acid);
+  box-shadow: 0 0 6px rgba(198, 255, 61, 0.7);
 }
 
-.labours li.fresh .pip {
-  box-shadow: 0 0 0 4px var(--ichor-soft);
+.hacks li.fresh .pip {
+  box-shadow: 0 0 0 4px var(--acid-soft), 0 0 10px var(--acid);
 }
 
 .stats {
@@ -847,12 +929,13 @@ textarea:disabled {
 
 .stats dd {
   margin: 0;
+  color: var(--acid);
   font-family: var(--mono-face);
   font-size: 12.5px;
   text-align: right;
 }
 
-/* ---------- oracle ---------- */
+/* ---------- operator check ---------- */
 
 .veil {
   position: fixed;
@@ -860,17 +943,30 @@ textarea:disabled {
   z-index: 10;
   display: grid;
   place-items: center;
-  background: rgba(10, 11, 20, 0.6);
+  background: rgba(6, 3, 12, 0.7);
+  backdrop-filter: blur(3px);
 }
 
-.oracle {
+.gate {
   width: min(560px, 92vw);
   padding: 22px 22px 18px;
-  border-radius: 14px;
   background: var(--raised);
-  border: 1px solid var(--hair);
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+  border: 1px solid var(--cyan);
+  box-shadow: inset 0 0 40px rgba(41, 231, 255, 0.08);
+  clip-path: var(--cut);
   animation: open 0.16s ease-out;
+}
+
+.gate-eyebrow {
+  margin: 0 0 6px;
+  font: 600 10.5px var(--mono-face);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--cyan);
+}
+
+.gate.risky .gate-eyebrow {
+  color: var(--wound);
 }
 
 @keyframes open {
@@ -880,34 +976,35 @@ textarea:disabled {
   }
 }
 
-.oracle-title {
+.gate-title {
   margin: 0 0 12px;
   font: 600 16px var(--display-face);
 }
 
-.oracle-risk {
+.gate-risk {
   margin: -4px 0 12px;
   color: var(--wound);
   font-size: 13px;
 }
 
-.oracle.risky {
-  border-color: rgba(229, 96, 79, 0.5);
+.gate.risky {
+  border-color: var(--wound);
+  box-shadow: inset 0 0 40px rgba(255, 77, 109, 0.1);
 }
 
-.oracle-detail {
+.gate-detail {
   margin: 0 0 18px;
   padding: 12px 14px;
   max-height: 260px;
   overflow: auto;
-  border-radius: 8px;
-  background: var(--night);
+  background: rgba(5, 2, 10, 0.85);
+  border: 1px solid var(--hair);
   font: 12.5px/1.55 var(--mono-face);
   white-space: pre-wrap;
   word-break: break-word;
 }
 
-.oracle-actions {
+.gate-actions {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
@@ -915,55 +1012,71 @@ textarea:disabled {
 
 .btn {
   padding: 7px 13px;
-  border-radius: 8px;
   color: var(--text);
   background: var(--surface);
+  border: 1px solid var(--hair-hot);
+  clip-path: var(--cut-sm);
 }
 
 .btn:hover {
-  background: #2c3047;
+  border-color: var(--muted);
 }
 
 .btn.primary {
-  background: var(--ichor);
-  color: #1d1606;
+  background: var(--neon);
+  border-color: var(--neon);
+  color: var(--on-neon);
   font-weight: 600;
 }
 
 .btn.primary kbd {
-  color: #6b5216;
+  color: #6d0b5a;
 }
 
-/* ---------- ascension & toasts ---------- */
+/* ---------- upgrade & toasts ---------- */
 
-.ascension {
+.upgrade {
   position: fixed;
   inset: 0;
   z-index: 20;
   display: grid;
   place-content: center;
   justify-items: center;
-  background: rgba(10, 11, 20, 0.82);
+  background: rgba(6, 3, 12, 0.86);
   cursor: pointer;
   animation: fade 0.4s ease-out;
 }
 
-.ascension-mark {
+.upgrade-mark {
   width: 96px;
   height: 96px;
   animation: ascend 1.1s cubic-bezier(0.2, 0.8, 0.2, 1);
-  filter: drop-shadow(0 0 28px rgba(226, 179, 74, 0.45));
+  filter: drop-shadow(0 0 28px rgba(255, 43, 214, 0.6));
 }
 
-.ascension-rank {
+.upgrade-rank {
   margin: 18px 0 2px;
-  font: 600 34px var(--display-face);
-  color: var(--ichor);
+  font: 600 38px var(--display-face);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--neon);
+  text-shadow: 0 0 18px rgba(255, 43, 214, 0.7), 2px 0 0 rgba(41, 231, 255, 0.6);
+  animation: glitch 0.9s steps(2) 2;
 }
 
-.ascension-sub {
+.upgrade-sub {
   margin: 0;
-  color: var(--muted);
+  font: 11.5px var(--mono-face);
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--cyan);
+}
+
+@keyframes glitch {
+  50% {
+    transform: translateX(-2px) skewX(-4deg);
+    text-shadow: -2px 0 0 rgba(41, 231, 255, 0.8), 2px 0 0 rgba(255, 43, 214, 0.8);
+  }
 }
 
 @keyframes ascend {
@@ -984,8 +1097,7 @@ textarea:disabled {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--hair);
-  border-radius: 4px;
+  background: var(--hair-hot);
 }
 
 @media (prefers-reduced-motion: reduce) {

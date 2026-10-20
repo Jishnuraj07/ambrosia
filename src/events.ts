@@ -1,5 +1,5 @@
 import { EventEmitter } from "node:events";
-import type { GodName } from "./config.js";
+import type { CrewName } from "./config.js";
 
 export interface TestResult {
   passed: number;
@@ -16,7 +16,7 @@ export interface Boss {
   startHp: number;
 }
 
-export interface Labour {
+export interface Hack {
   id: string;
   title: string;
   description: string;
@@ -25,23 +25,23 @@ export interface Labour {
 
 /** Every event the harness emits. The agent emits the first group; the game emits the rest. */
 export interface EventMap {
-  turn_start: { god: GodName };
-  text: { god: GodName; delta: string };
-  thinking: { god: GodName; delta: string };
-  tool_start: { god: GodName; id: string; name: string; summary: string };
-  tool_end: { god: GodName; id: string; name: string; ok: boolean; summary: string };
-  approval: { god: GodName; tool: string; summary: string; approved: boolean; risky: boolean };
-  edit: { god: GodName; path: string };
-  shell_result: { god: GodName; command: string; exitCode: number | null; risky: boolean; approved: boolean };
+  turn_start: { crew: CrewName };
+  text: { crew: CrewName; delta: string };
+  thinking: { crew: CrewName; delta: string };
+  tool_start: { crew: CrewName; id: string; name: string; summary: string };
+  tool_end: { crew: CrewName; id: string; name: string; ok: boolean; summary: string };
+  approval: { crew: CrewName; tool: string; summary: string; approved: boolean; risky: boolean };
+  edit: { crew: CrewName; path: string };
+  shell_result: { crew: CrewName; command: string; exitCode: number | null; risky: boolean; approved: boolean };
   test_result: TestResult;
   review: { approved: boolean };
-  turn_end: { god: GodName; text: string; stopReason: string | null; inputTokens: number; outputTokens: number };
+  turn_end: { crew: CrewName; text: string; stopReason: string | null; inputTokens: number; outputTokens: number };
   error: { message: string };
   notice: { text: string };
 
   xp: { amount: number; reason: string; total: number };
   rank_up: { rank: string };
-  labour: Labour;
+  hack: Hack;
   boss: { boss: Boss | null; change: "spawn" | "hit" | "grow" | "defeated" | "none" };
   narration: { text: string };
 }

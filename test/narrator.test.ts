@@ -3,7 +3,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { Bus } from "../src/events.js";
 import { Narrator } from "../src/narrator.js";
 import { DEFAULT_CONFIG } from "../src/config.js";
-import { LABOURS } from "../src/game/labours.js";
+import { HACKS } from "../src/game/hacks.js";
 
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
@@ -16,7 +16,7 @@ function setup(client: Anthropic | null = null) {
   return { bus, narrator, lines };
 }
 
-const boss = { name: "Hydra", hp: 0, maxHp: 5, startHp: 2 };
+const boss = { name: "Rogue AI", hp: 0, maxHp: 5, startHp: 2 };
 
 describe("Narrator", () => {
   it("narrates major moments from templates when there is no API client", async () => {
@@ -24,13 +24,13 @@ describe("Narrator", () => {
     bus.emit("boss", { boss, change: "defeated" });
     await vi.advanceTimersByTimeAsync(1000);
     expect(lines).toHaveLength(1);
-    expect(lines[0]).toMatch(/Hydra|Green across the board/);
+    expect(lines[0]).toMatch(/Rogue AI|Green across the board/);
   });
 
   it("batches a burst of events into one line", async () => {
     const { bus, lines } = setup();
-    bus.emit("labour", LABOURS.first_blood);
-    bus.emit("rank_up", { rank: "Hero" });
+    bus.emit("hack", HACKS.first_blood);
+    bus.emit("rank_up", { rank: "Runner" });
     bus.emit("boss", { boss, change: "defeated" });
     await vi.advanceTimersByTimeAsync(1000);
     expect(lines).toHaveLength(1);
@@ -39,15 +39,15 @@ describe("Narrator", () => {
   it("stays quiet when disabled", async () => {
     const { bus, narrator, lines } = setup();
     narrator.enabled = false;
-    bus.emit("labour", LABOURS.first_blood);
+    bus.emit("hack", HACKS.first_blood);
     await vi.advanceTimersByTimeAsync(1000);
     expect(lines).toEqual([]);
   });
 
-  it("ignores Hephaestus turns that did not finish cleanly", async () => {
+  it("ignores Fabricator turns that did not finish cleanly", async () => {
     const { bus, lines } = setup();
-    bus.emit("turn_end", { god: "hephaestus", text: "", stopReason: "aborted", inputTokens: 0, outputTokens: 0 });
-    bus.emit("turn_end", { god: "momus", text: "", stopReason: "end_turn", inputTokens: 0, outputTokens: 0 });
+    bus.emit("turn_end", { crew: "fabricator", text: "", stopReason: "aborted", inputTokens: 0, outputTokens: 0 });
+    bus.emit("turn_end", { crew: "blackice", text: "", stopReason: "end_turn", inputTokens: 0, outputTokens: 0 });
     await vi.advanceTimersByTimeAsync(1000);
     expect(lines).toEqual([]);
   });
@@ -55,23 +55,23 @@ describe("Narrator", () => {
   it("asks the narrator model, then falls back to templates during the cooldown", async () => {
     const create = vi.fn(async (_params: any) => ({
       stop_reason: "end_turn",
-      content: [{ type: "text", text: '"The crowd roars as the Hydra falls!"' }],
+      content: [{ type: "text", text: '"The whole grid cheers as the Rogue AI goes dark!"' }],
     }));
     const { bus, lines } = setup({ messages: { create } } as unknown as Anthropic);
 
-    bus.emit("edit", { god: "hephaestus", path: "src/a.ts" });
+    bus.emit("edit", { crew: "fabricator", path: "src/a.ts" });
     bus.emit("boss", { boss, change: "defeated" });
     await vi.advanceTimersByTimeAsync(1000);
-    expect(lines).toEqual(["The crowd roars as the Hydra falls!"]);
+    expect(lines).toEqual(["The whole grid cheers as the Rogue AI goes dark!"]);
     const params = create.mock.calls[0][0];
     expect(params.model).toBe("claude-haiku-4-5");
     expect(params.messages[0].content).toContain("edited src/a.ts");
     expect(params.output_config).toBeUndefined(); // Haiku takes no effort setting
 
-    bus.emit("labour", LABOURS.golden_fleece);
+    bus.emit("hack", HACKS.cracked_ice);
     await vi.advanceTimersByTimeAsync(1000);
     expect(create).toHaveBeenCalledTimes(1);
-    expect(lines[1]).toMatch(/Golden Fleece/);
+    expect(lines[1]).toMatch(/Cracked the ICE/);
   });
 
   it("falls back to a template when the model call fails", async () => {
@@ -79,9 +79,9 @@ describe("Narrator", () => {
       throw new Error("network down");
     });
     const { bus, lines } = setup({ messages: { create } } as unknown as Anthropic);
-    bus.emit("rank_up", { rank: "Titan" });
+    bus.emit("rank_up", { rank: "Ghost" });
     await vi.advanceTimersByTimeAsync(1000);
     expect(lines).toHaveLength(1);
-    expect(lines[0]).toMatch(/Titan/);
+    expect(lines[0]).toMatch(/Ghost/);
   });
 });

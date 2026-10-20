@@ -2,52 +2,52 @@ import fs from "node:fs";
 import path from "node:path";
 import { execSync } from "node:child_process";
 import type Anthropic from "@anthropic-ai/sdk";
-import type { GodName } from "../config.js";
+import type { CrewName } from "../config.js";
+import { PERSONAS } from "../agent/personas.js";
 
 type ScriptedMessage = { stop_reason: string; content: Array<Record<string, unknown>> };
 
 /**
- * The demo session used by the smoke tests: Hephaestus finds a failing test in
- * math.mjs, fixes `add`, and reruns; Momus approves. No API key needed.
+ * The demo session used by the smoke tests: Fabricator finds a failing test in
+ * math.mjs, fixes `add`, and reruns; Black ICE approves. No API key needed.
  */
-export function demoScripts(testCommand = "node --test"): Partial<Record<GodName, ScriptedMessage[]>> {
+export function demoScripts(testCommand = "node --test"): Partial<Record<CrewName, ScriptedMessage[]>> {
   return {
-    hephaestus: [
-      { stop_reason: "tool_use", content: [{ type: "text", text: "Let's see what's cracked." }, { type: "tool_use", id: "h1", name: "run_tests", input: { command: testCommand } }] },
+    fabricator: [
+      { stop_reason: "tool_use", content: [{ type: "text", text: "Let's see what's shorting out." }, { type: "tool_use", id: "h1", name: "run_tests", input: { command: testCommand } }] },
       { stop_reason: "tool_use", content: [{ type: "tool_use", id: "h2", name: "read_file", input: { path: "math.mjs" } }] },
       { stop_reason: "tool_use", content: [{ type: "tool_use", id: "h3", name: "edit_file", input: { path: "math.mjs", old_string: "a - b", new_string: "a + b" } }] },
       { stop_reason: "tool_use", content: [{ type: "tool_use", id: "h4", name: "run_tests", input: { command: testCommand } }] },
-      { stop_reason: "end_turn", content: [{ type: "text", text: "Fixed: `add` subtracted instead of adding. All **3 tests** pass. Good metal now." }] },
+      { stop_reason: "end_turn", content: [{ type: "text", text: "Fixed: `add` subtracted instead of adding. All **3 tests** pass. Clean signal now." }] },
     ],
-    momus: [
-      { stop_reason: "end_turn", content: [{ type: "text", text: "A one-character fix. Truly, the bards will sing of it.\n\nNo real findings.\n\nVERDICT: APPROVED" }] },
+    blackice: [
+      { stop_reason: "end_turn", content: [{ type: "text", text: "A one-character fix. Someone alert the newsfeeds.\n\nNo real findings.\n\nVERDICT: APPROVED" }] },
     ],
   };
 }
 
-/** Which god a request is for, from the persona line that opens its system prompt. */
-function godOf(system: unknown): GodName | null {
+/** Which crew member a request is for, from the persona line that opens its system prompt. */
+function crewOf(system: unknown): CrewName | null {
   const text = typeof system === "string" ? system : "";
-  const m = text.match(/^You are (Hephaestus|Athena|Momus|Hermes)/);
-  return m ? (m[1].toLowerCase() as GodName) : null;
+  return Object.values(PERSONAS).find((p) => text.startsWith(`You are ${p.title},`))?.crew ?? null;
 }
 
 /**
- * A stand-in for the SDK client that replays scripted replies per god. Only the
- * calls Ambrosia makes are implemented: beta streaming for the gods and
+ * A stand-in for the SDK client that replays scripted replies per crew member.
+ * Only the calls Ambrosia makes are implemented: beta streaming for the crew and
  * messages.create for the narrator.
  */
-export function createScriptedClient(scripts: Partial<Record<GodName, ScriptedMessage[]>>, delayMs = 150): Anthropic {
-  const fallback = (god: GodName | null): ScriptedMessage => ({
+export function createScriptedClient(scripts: Partial<Record<CrewName, ScriptedMessage[]>>, delayMs = 150): Anthropic {
+  const fallback = (crew: CrewName | null): ScriptedMessage => ({
     stop_reason: "end_turn",
-    content: [{ type: "text", text: `(${god ?? "unknown"} has no more scripted lines)` }],
+    content: [{ type: "text", text: `(${crew ?? "unknown"} has no more scripted lines)` }],
   });
   const client = {
     beta: {
       messages: {
         stream(params: { system?: unknown }) {
-          const god = godOf(params.system);
-          const msg = (god && scripts[god]?.shift()) || fallback(god);
+          const crew = crewOf(params.system);
+          const msg = (crew && scripts[crew]?.shift()) || fallback(crew);
           const on: Record<string, (d: string) => void> = {};
           return {
             on(name: string, fn: (d: string) => void) {
@@ -56,7 +56,7 @@ export function createScriptedClient(scripts: Partial<Record<GodName, ScriptedMe
             },
             async finalMessage() {
               await new Promise((r) => setTimeout(r, delayMs));
-              on.thinking?.("Weighing where the crack in the casting is…");
+              on.thinking?.("Tracing where the signal drops out…");
               for (const b of msg.content) if (b.type === "text") on.text?.(String(b.text));
               return { usage: { input_tokens: 1, output_tokens: 1 }, stop_details: null, ...msg };
             },
@@ -66,7 +66,7 @@ export function createScriptedClient(scripts: Partial<Record<GodName, ScriptedMe
     },
     messages: {
       async create() {
-        return { stop_reason: "end_turn", content: [{ type: "text", text: "Hermes saw it all, and he's telling everyone." }] };
+        return { stop_reason: "end_turn", content: [{ type: "text", text: "Pirate Radio caught it all, and the whole sprawl is listening." }] };
       },
     },
   };

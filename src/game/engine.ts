@@ -1,10 +1,10 @@
 import type { Boss, Bus, TestResult } from "../events.js";
-import { LABOURS, type LabourId } from "./labours.js";
+import { HACKS, type HackId } from "./hacks.js";
 import { localDay, saveProfile, streak, type Profile } from "./profile.js";
-import { monsterFor, rankFor } from "./ranks.js";
+import { rankFor, threatFor } from "./ranks.js";
 
 export const XP = {
-  headSlain: 10,
+  processKilled: 10,
   bossDefeated: 25,
   greenRun: 2,
   regression: -5,
@@ -19,7 +19,7 @@ export interface EngineOptions {
 }
 
 /**
- * Turns harness events into ambrosia, ranks, labours and monsters. It only
+ * Turns harness events into cred, ranks, hacks and threats. It only
  * listens to the bus, so muting the fun never touches the agent itself.
  */
 export class GameEngine {
@@ -42,28 +42,28 @@ export class GameEngine {
     this.unsubscribe = [
       bus.on("test_result", (r) => this.enabled && this.onTests(r)),
       bus.on("shell_result", (r) => {
-        if (this.enabled && r.risky && r.approved && r.exitCode !== 0) this.award("icarus");
+        if (this.enabled && r.risky && r.approved && r.exitCode !== 0) this.award("bricked");
       }),
       bus.on("approval", (a) => {
         if (!this.enabled || a.approved) return;
-        if (++this.denials === 3) this.award("pandora");
+        if (++this.denials === 3) this.award("firewall");
       }),
       bus.on("turn_end", (t) => {
-        if (!this.enabled || t.god !== "hephaestus" || t.stopReason !== "end_turn") return;
+        if (!this.enabled || t.crew !== "fabricator" || t.stopReason !== "end_turn") return;
         this.profile.stats.tasks++;
-        this.gain(XP.task, "task complete");
-        if (this.profile.stats.tasks >= 10) this.award("odyssey");
+        this.gain(XP.task, "job complete");
+        if (this.profile.stats.tasks >= 10) this.award("gig_economy");
       }),
       bus.on("review", (r) => {
         if (!this.enabled || !r.approved) return;
         this.profile.stats.reviewsPassed++;
-        this.gain(XP.review, "Momus approves");
-        this.award("golden_fleece");
+        this.gain(XP.review, "Black ICE approves");
+        this.award("cracked_ice");
       }),
     ];
   }
 
-  /** Call once per session: counts the session and checks time-based labours. */
+  /** Call once per session: counts the session and checks time-based hacks. */
   startSession(): void {
     const now = this.now();
     const today = localDay(now);
@@ -71,8 +71,8 @@ export class GameEngine {
     if (this.profile.days[this.profile.days.length - 1] !== today) {
       this.profile.days = [...this.profile.days, today].slice(-60);
     }
-    if (now.getHours() < 5) this.award("night_owl");
-    if (streak(this.profile.days) >= 3) this.award("apollo");
+    if (now.getHours() < 5) this.award("night_shift");
+    if (streak(this.profile.days) >= 3) this.award("uptime");
     this.save();
   }
 
@@ -80,12 +80,12 @@ export class GameEngine {
     this.unsubscribe.forEach((u) => u());
   }
 
-  award(id: LabourId): void {
-    if (!this.enabled || this.profile.labours[id]) return;
-    const labour = LABOURS[id];
-    this.profile.labours[id] = this.now().toISOString();
-    this.bus.emit("labour", labour);
-    this.gain(labour.reward, labour.title);
+  award(id: HackId): void {
+    if (!this.enabled || this.profile.hacks[id]) return;
+    const hack = HACKS[id];
+    this.profile.hacks[id] = this.now().toISOString();
+    this.bus.emit("hack", hack);
+    this.gain(hack.reward, hack.title);
   }
 
   gain(amount: number, reason: string): void {
@@ -101,11 +101,11 @@ export class GameEngine {
   private onTests(r: TestResult): void {
     const nowFailing = new Set(r.failing);
 
-    // Sisyphus: the same named test failing run after run.
+    // Infinite Loop: the same named test failing run after run.
     for (const name of nowFailing) {
       const n = (this.profile.stats.failCounts[name] ?? 0) + 1;
       this.profile.stats.failCounts[name] = n;
-      if (n >= 5) this.award("sisyphus");
+      if (n >= 5) this.award("infinite_loop");
     }
 
     // A test we fixed earlier is failing again.
@@ -119,7 +119,7 @@ export class GameEngine {
     const boss = this.boss;
     if (!boss) {
       if (r.failed > 0) {
-        this.boss = { name: monsterFor(r.failed), hp: r.failed, maxHp: r.failed, startHp: r.failed };
+        this.boss = { name: threatFor(r.failed), hp: r.failed, maxHp: r.failed, startHp: r.failed };
         this.bus.emit("boss", { boss: this.boss, change: "spawn" });
       } else if (r.passed > 0) {
         this.gain(XP.greenRun, "all green");
@@ -129,26 +129,26 @@ export class GameEngine {
     }
 
     if (r.failed === 0) {
-      const slain = boss.hp;
-      this.profile.stats.testsFixed += slain;
+      const killed = boss.hp;
+      this.profile.stats.testsFixed += killed;
       this.profile.stats.bossesDefeated++;
-      this.gain(XP.headSlain * slain + XP.bossDefeated, `${boss.name} defeated`);
+      this.gain(XP.processKilled * killed + XP.bossDefeated, `${boss.name} purged`);
       this.award("first_blood");
-      this.award("boss_slayer");
-      if (boss.maxHp >= boss.startHp + 3) this.award("hydra_slayer");
+      this.award("daemon_killer");
+      if (boss.maxHp >= boss.startHp + 3) this.award("fork_bomb");
       this.boss = null;
       this.bus.emit("boss", { boss: { ...boss, hp: 0 }, change: "defeated" });
     } else if (r.failed < boss.hp) {
-      const slain = boss.hp - r.failed;
+      const killed = boss.hp - r.failed;
       boss.hp = r.failed;
-      this.profile.stats.testsFixed += slain;
-      this.gain(XP.headSlain * slain, `${slain} head${slain > 1 ? "s" : ""} slain`);
+      this.profile.stats.testsFixed += killed;
+      this.gain(XP.processKilled * killed, `${killed} process${killed > 1 ? "es" : ""} killed`);
       this.award("first_blood");
       this.bus.emit("boss", { boss: { ...boss }, change: "hit" });
     } else if (r.failed > boss.hp) {
       boss.hp = r.failed;
       boss.maxHp = Math.max(boss.maxHp, r.failed);
-      boss.name = monsterFor(boss.maxHp);
+      boss.name = threatFor(boss.maxHp);
       this.bus.emit("boss", { boss: { ...boss }, change: "grow" });
     } else {
       this.bus.emit("boss", { boss: { ...boss }, change: "none" });

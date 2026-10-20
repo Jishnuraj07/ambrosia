@@ -12,6 +12,8 @@ A coding agent for your terminal, played as a cyberpunk heist. Claude works as a
 
 It is a real agent. It reads, searches and edits files, runs commands, and runs your tests. The fun sits on top as a separate layer, and `--serious` turns all of it off.
 
+**Download:** Windows installers are on the [releases page](https://github.com/Jishnuraj07/ambrosia/releases). To run from source, see [Setup](#setup).
+
 ## The crew
 
 | Crew member | Role | Default model |
@@ -92,6 +94,23 @@ npm run check       # typecheck, tests, build and the scripted smoke test, as CI
 npm run smoke:desktop     # drives the desktop window through the demo; screenshots in shots/
 ```
 
-CI (`.github/workflows/ci.yml`) runs `check` on Ubuntu and Windows with Node 20 and 24.
+CI (`.github/workflows/ci.yml`) runs `check` on Ubuntu and Windows with Node 20 and 24. Pushing a `v*` tag runs `.github/workflows/release.yml`, which builds, signs and drafts a release (see [`.signpath/README.md`](.signpath/README.md)).
 
 Layout: `src/agent/` holds the loop, tools, personas and the heist (`council.ts`). The game engine, hacks, ranks and profile are in `src/game/`, sound and speech in `src/audio/`, and the Ink UI in `src/ui/`. `src/narrator.ts` is Pirate Radio. Everything talks through the typed event bus in `src/events.ts`. The game, the narrator and the sound only listen to it, so the agent never depends on them.
+
+## Code signing policy
+
+Free code signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org).
+
+Windows releases are built from this repository by GitHub Actions and signed through SignPath. Only builds of tagged releases are signed, and each signing request is approved by hand.
+
+- Committers and reviewers: [Jishnuraj07](https://github.com/Jishnuraj07)
+- Approvers: [Jishnuraj07](https://github.com/Jishnuraj07)
+
+### Privacy
+
+Ambrosia sends your prompts to the [Anthropic API](https://www.anthropic.com/legal/privacy) using your own API key, along with any file contents and command output the crew reads while working. That is the only network connection it makes. There is no telemetry, analytics or auto-update. Your config and progress stay on your machine in `~/.ambrosia/`.
+
+## License
+
+[ISC](LICENSE)

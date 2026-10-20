@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SignPath artifact configuration "installers". Paste this into the SignPath
+  project; the release workflow uploads a zip of the two Windows executables.
+-->
+<artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+  <zip-file>
+    <pe-file path="Ambrosia-Setup-*.exe">
+      <authenticode-sign />
+    </pe-file>
+    <pe-file path="Ambrosia-*-portable.exe">
+      <authenticode-sign />
+    </pe-file>
+  </zip-file>
+</artifact-configuration>

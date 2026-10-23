@@ -799,6 +799,44 @@ kbd {
   height: 14px;
 }
 
+.suggest {
+  margin-bottom: 6px;
+  padding: 4px 0;
+  background: rgba(21, 8, 11, 0.96);
+  border: 1px solid var(--hair-hot);
+  clip-path: var(--cut-sm);
+}
+
+.suggest-item {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  padding: 5px 14px;
+  border-left: 2px solid transparent;
+  text-align: left;
+  font: 13px var(--mono-face);
+  color: var(--acid);
+}
+
+.suggest-item > :first-child {
+  min-width: 13ch;
+}
+
+.suggest-item .about {
+  font-family: var(--text-face);
+  color: var(--faint);
+}
+
+.suggest-item.on {
+  border-left-color: var(--neon);
+  background: var(--neon-soft);
+  color: var(--neon);
+}
+
+.suggest-item.on .about {
+  color: var(--muted);
+}
+
 .field {
   display: flex;
   align-items: flex-end;

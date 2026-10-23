@@ -18,6 +18,7 @@ import { ambrosiaHome } from "../config.js";
 import type { EventName } from "../events.js";
 import { HACKS } from "../game/hacks.js";
 import { RANKS } from "../game/ranks.js";
+import { COMMANDS } from "../commands.js";
 import { PERSONAS } from "../agent/personas.js";
 import { createDemoProject, createScriptedClient, demoScripts } from "../testing/demo.js";
 import { runDesktopSmoke } from "./smoke.js";
@@ -113,6 +114,7 @@ export function snapshot() {
     boss: s.engine.boss,
     ranks: RANKS,
     personas: PERSONAS,
+    commands: COMMANDS,
     hacks: Object.values(HACKS).map((l) => ({ ...l, earned: Boolean(p.hacks[l.id]) })),
   };
 }

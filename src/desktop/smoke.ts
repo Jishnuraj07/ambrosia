@@ -58,6 +58,18 @@ export async function runDesktopSmoke({ win, session, shotsDir }: { win: Browser
   await sleep(800);
   await js(`document.body.classList.add("no-anim")`);
   await shot("1-start");
+  // Half-type a command: the suggestions open, arrows move, Tab completes.
+  const key = (k: string) => js(`document.getElementById("prompt").dispatchEvent(new KeyboardEvent("keydown", { key: "${k}", bubbles: true }))`);
+  const typeIn = (v: string) => js(`(() => { const p = document.getElementById("prompt"); p.value = "${v}"; p.dispatchEvent(new Event("input")); })()`);
+  await typeIn("/h");
+  const suggested = await js<string[]>(`[...document.querySelectorAll(".suggest-item")].map((e) => e.firstChild.textContent)`);
+  await key("ArrowDown");
+  await shot("1b-commands");
+  await key("Tab");
+  const completed = await js<string>(`document.getElementById("prompt").value`);
+  await typeIn("/s");
+  await key("Escape");
+  const dismissed = await js<boolean>(`document.getElementById("suggest").hidden && document.getElementById("prompt").value === ""`);
   await runTurn("fix the failing tests");
   await js(`document.getElementById("upgrade").hidden = true`);
   await sleep(300);
@@ -72,6 +84,9 @@ export async function runDesktopSmoke({ win, session, shotsDir }: { win: Browser
   const order = (needle: string) => text.indexOf(needle);
   const checks: Array<[string, boolean]> = [
     ["bug fixed on disk", fs.readFileSync(path.join(session.root, "math.mjs"), "utf8").includes("a + b")],
+    ["commands suggested", suggested.join(" ") === "/heist <task> /hacks /help"],
+    ["Tab completes the picked command", completed === "/hacks"],
+    ["Esc dismisses suggestions", dismissed],
     ["gate shown", gateShot],
     ["threat appeared", /A (Bug|Daemon|Worm|Rogue AI) appears/.test(text)],
     ["threat purged", text.includes("is purged")],

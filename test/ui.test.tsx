@@ -1,8 +1,9 @@
 import React from "react";
 import { renderToString } from "ink";
 import { describe, expect, it } from "vitest";
-import { BossBar, CrewBubble, HackCard, GatePrompt, StatusBar, ToolLine } from "../src/ui/components.js";
+import { BossBar, CrewBubble, HackCard, GatePrompt, StatusBar, Suggestions, ToolLine } from "../src/ui/components.js";
 import { HACKS } from "../src/game/hacks.js";
+import { suggest } from "../src/commands.js";
 
 const plain = (node: React.ReactElement) => renderToString(node, { columns: 100 }).replace(/\x1b\[[0-9;?]*[A-Za-z]/g, "");
 
@@ -18,6 +19,15 @@ describe("UI components", () => {
   it("StatusBar at the top rank and in serious mode", () => {
     expect(plain(<StatusBar xp={9999} serious={false} sound={false} tts={false} />)).toContain("top of the grid");
     expect(plain(<StatusBar xp={9999} serious={true} sound={false} tts={false} />)).toMatch(/^serious mode/);
+  });
+
+  it("Suggestions lists matching commands and marks the picked one", () => {
+    const items = suggest("/h");
+    const out = plain(<Suggestions items={items} picked={items[1]} />);
+    expect(out).toContain("/heist <task>");
+    expect(out).toMatch(/▸ \/hacks/);
+    expect(out).not.toMatch(/▸ \/heist/);
+    expect(out).toContain("Tab complete");
   });
 
   it("BossBar draws one block per failing test", () => {

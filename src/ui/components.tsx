@@ -4,6 +4,7 @@ import Spinner from "ink-spinner";
 import type { CrewName } from "../config.js";
 import type { Boss, Hack } from "../events.js";
 import type { ApprovalRequest } from "../agent/tools.js";
+import type { Command } from "../commands.js";
 import { PERSONAS, workingLine } from "../agent/personas.js";
 import { progress } from "../game/ranks.js";
 
@@ -100,6 +101,29 @@ export function ToolLine({ name, summary, ok, result }: { name: string; summary:
           {result}
         </Text>
       ) : null}
+    </Box>
+  );
+}
+
+/** The commands matching a half-typed "/", with the highlighted one marked. */
+export function Suggestions({ items, picked }: { items: Command[]; picked?: Command }) {
+  const width = Math.max(...items.map((c) => (c.args ? `${c.name} ${c.args}` : c.name).length));
+  return (
+    <Box flexDirection="column">
+      {items.map((c) => {
+        const on = c === picked;
+        const usage = c.args ? `${c.name} ${c.args}` : c.name;
+        return (
+          <Text key={c.name} wrap="truncate-end">
+            <Text color={on ? YELLOW : DIM}>{on ? "  ▸ " : "    "}</Text>
+            <Text color={on ? YELLOW : CYAN} bold={on}>
+              {usage.padEnd(width)}
+            </Text>
+            <Text color={DIM}>  {c.about}</Text>
+          </Text>
+        );
+      })}
+      <Text color={DIM}>    ↑↓ choose · Tab complete · Enter run · Esc dismiss</Text>
     </Box>
   );
 }

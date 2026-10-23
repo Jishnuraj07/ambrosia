@@ -5,7 +5,8 @@ import type { CrewName } from "../config.js";
 import type { Boss, Hack } from "../events.js";
 import type { ApprovalRequest } from "../agent/tools.js";
 import type { ApprovalAnswer, Session } from "../session.js";
-import { Banner, BossBar, CrewBubble, HackCard, GatePrompt, RankUp, StatusBar, ToolLine, Working } from "./components.js";
+import { complete, suggest } from "../commands.js";
+import { Banner, BossBar, CrewBubble, HackCard, GatePrompt, RankUp, StatusBar, Suggestions, ToolLine, Working } from "./components.js";
 
 type Entry =
   | { id: number; kind: "banner" }
@@ -104,6 +105,9 @@ export function App({ session, initialPrompt }: { session: Session; initialPromp
   const [xp, setXp] = useState(session.engine.profile.xp);
   const [mode, setMode] = useState({ serious: session.serious, sound: session.sound, tts: session.tts });
   const [tick, setTick] = useState(0);
+  const [pick, setPick] = useState(0);
+  // Bumped to remount the text input, so its cursor lands at the end of a completed command.
+  const [inputKey, setInputKey] = useState(0);
   const liveRef = useRef<Live | null>(null);
   const dirty = useRef(false);
   const toolSummaries = useRef(new Map<string, string>());
@@ -204,7 +208,25 @@ export function App({ session, initialPrompt }: { session: Session; initialPromp
     return () => clearInterval(t);
   }, []);
 
+  const suggestions = busy ? [] : suggest(input);
+  const picked = suggestions[Math.min(pick, suggestions.length - 1)];
+
+  const edit = (v: string) => {
+    setInput(v);
+    setPick(0);
+  };
+
+  const accept = (line: string) => {
+    edit(line);
+    setInputKey((k) => k + 1);
+  };
+
   const submit = async (line: string) => {
+    // Enter on a half-typed command runs the highlighted one, or completes it when it needs an argument.
+    if (picked) {
+      if (picked.args) return accept(complete(picked));
+      line = picked.name;
+    }
     setInput("");
     if (!line.trim()) return;
     add({ kind: "user", text: line });
@@ -235,6 +257,12 @@ export function App({ session, initialPrompt }: { session: Session; initialPromp
       return;
     }
     if (key.escape && busy) session.interrupt();
+    if (suggestions.length) {
+      if (key.upArrow) setPick((p) => (p - 1 + suggestions.length) % suggestions.length);
+      else if (key.downArrow) setPick((p) => (p + 1) % suggestions.length);
+      else if (key.tab && picked) accept(complete(picked));
+      else if (key.escape) accept("");
+    }
   });
 
   return (
@@ -258,9 +286,10 @@ export function App({ session, initialPrompt }: { session: Session; initialPromp
             <Text color="#fcee0a" bold>
               ›{" "}
             </Text>
-            <TextInput value={input} onChange={setInput} onSubmit={(v) => void submit(v)} placeholder="What's the job?" />
+            <TextInput key={inputKey} value={input} onChange={edit} onSubmit={(v) => void submit(v)} placeholder="What's the job? (/ for commands)" />
           </Box>
         )}
+        {suggestions.length ? <Suggestions items={suggestions} picked={picked} /> : null}
       </Box>
     </Box>
   );

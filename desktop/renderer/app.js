@@ -445,6 +445,8 @@ async function submit(raw) {
   if (!text || busy) return;
   $("prompt").value = "";
   autosize();
+  pick = 0;
+  refreshSuggest();
   const you = el("div", "you");
   you.appendChild(el("p", "", text));
   append(you);
@@ -463,6 +465,45 @@ async function submit(raw) {
   }
 }
 
+// Commands matching a half-typed "/", same rules as src/commands.ts.
+let suggestions = [];
+let pick = 0;
+
+function refreshSuggest() {
+  const v = $("prompt").value;
+  const typed = v.toLowerCase();
+  suggestions = busy || !v.startsWith("/") || /\s/.test(v) ? [] : (state?.commands ?? []).filter((c) => c.name.startsWith(typed) && c.name !== typed);
+  pick = Math.min(pick, Math.max(suggestions.length - 1, 0));
+  const box = $("suggest");
+  box.replaceChildren(
+    ...suggestions.map((c, i) => {
+      const item = el("button", `suggest-item${i === pick ? " on" : ""}`);
+      item.type = "button";
+      item.setAttribute("role", "option");
+      item.append(el("span", "", c.args ? `${c.name} ${c.args}` : c.name), el("span", "about", c.about));
+      // mousedown, so the textarea keeps focus.
+      item.addEventListener("mousedown", (e) => {
+        e.preventDefault();
+        pick = i;
+        acceptSuggest(true);
+      });
+      return item;
+    }),
+  );
+  box.hidden = suggestions.length === 0;
+}
+
+/** Fill in the highlighted command; with run, also send it unless it needs an argument. */
+function acceptSuggest(run) {
+  const c = suggestions[pick];
+  if (!c) return;
+  pick = 0;
+  if (run && !c.args) return void submit(c.name);
+  $("prompt").value = c.args ? `${c.name} ` : c.name;
+  autosize();
+  refreshSuggest();
+}
+
 function autosize() {
   const t = $("prompt");
   t.style.height = "auto";
@@ -475,12 +516,36 @@ function wire() {
     void submit($("prompt").value);
   });
   $("prompt").addEventListener("keydown", (e) => {
+    if (suggestions.length) {
+      const n = suggestions.length;
+      const move = { ArrowUp: -1, ArrowDown: 1 }[e.key];
+      if (move) {
+        e.preventDefault();
+        pick = (pick + move + n) % n;
+        return refreshSuggest();
+      }
+      if (e.key === "Tab" || (e.key === "Enter" && !e.shiftKey)) {
+        e.preventDefault();
+        return acceptSuggest(e.key === "Enter");
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        $("prompt").value = "";
+        autosize();
+        return refreshSuggest();
+      }
+    }
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       void submit($("prompt").value);
     }
   });
-  $("prompt").addEventListener("input", autosize);
+  $("prompt").addEventListener("input", () => {
+    pick = 0;
+    autosize();
+    refreshSuggest();
+  });
   document.querySelectorAll(".shortcut").forEach((b) =>
     b.addEventListener("click", () => {
       if (b.dataset.run) void submit(b.dataset.run);
